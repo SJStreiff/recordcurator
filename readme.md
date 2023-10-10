@@ -10,6 +10,11 @@ This pipeline consists (at the moment) of two independent but complementary step
 
 ## Installation
 
+To use recordcurator, clone this repository using
+``` 
+git clone ....
+```
+
 You need the following prerequisites for using these scripts: python3 and conda. To install the required python-dependencies, 
 in your terminal window navigate to your folder with the enclosed *'environment.yml'* file. Once there, execute the command *conda env create -f environment.yml*. By default, it will be named **recordcurator** by default, but you can change this in the first line of the environment.yml file.
 Follow this up with *conda activate recordcurator*, followed by  *pip install pykew country-converter*. Now you should be ready to start using the pipeline. I strongly recommend you look at the supplied configuration file, where you can specify all options, inputs and outputs. 
