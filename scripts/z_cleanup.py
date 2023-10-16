@@ -39,7 +39,7 @@ def cleanup(occs, cols_to_clean, verbose = True, debugging = False):
                 occs[col] = occs[col].str.strip('/') 
                 print('det_by cleaning')
 
-            if col == 'link':
+            elif col == 'link':
                 logging.info('col to clean in -link-')
                 occs[col] = occs[col].apply(lambda x: ' - '.join(set(x.split(' - '))))    # this combines all duplicated values within a cell     
                 occs[col] = occs[col].str.strip()

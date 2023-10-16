@@ -38,3 +38,10 @@
 # 2023-09-26/27:
     - cleaned up superfluous files, deprecated scripts...
     - merging branch coordinate debug into master
+
+# 2023-10-10:
+    - moved to /SJStreiff/recordcurator, [v0.0.1-alpha] released
+
+# 2023-10-14:
+    - created branch 'expert_additions' for adding more expert det integration capabilities
+    - bug fix for det_by formatting problems after cleanup step.

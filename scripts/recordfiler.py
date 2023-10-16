@@ -436,8 +436,11 @@ if __name__ == "__main__":
             #     deduplid[col] = deduplid[col].fillna('')
             #     #deduplid[col] = deduplid[col].fillna('nan')
             # except:
-            deduplid[col] = deduplid[col].fillna(args.na_value)
+            try:
+                deduplid[col] = deduplid[col].fillna(args.na_value)
 
+            except:
+                deduplid[col] = deduplid[col].fillna(int(args.na_value))
     no_coord_bl.to_csv(mdb_dir + '/backups/coord/'+date+'_coord_backlog.csv', sep=';')
     BL_indets.to_csv(mdb_dir + '/backups/indet/'+date+'_indet_backlog.csv', sep=';')
     m_DB.to_csv(mdb_dir + '/backups/'+date+'_master_backup.csv', sep = ';', index = False)#, mode='x')
