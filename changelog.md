@@ -45,3 +45,8 @@
 # 2023-10-14:
     - created branch 'expert_additions' for adding more expert det integration capabilities
     - bug fix for det_by formatting problems after cleanup step.
+
+# 2023-10-16:
+    - added expert det capability (untested!) when expert data only has collector name and collection number
+    - streamlined recordfiler (only one large crossreference of datasets instead of 3). file duplicated to 'recordfiler_v0.2'
+    

@@ -502,37 +502,6 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
 
 
 
-#     # otherwise the crucial data is here so we can proceed...
-#                     master_db.loc[sel_sum, 'barcode'] = new
-#                     master_db.loc[sel_sum, 'accepted_name'] = exp_dat.at[i, 'accepted_name'] 
-#                     master_db.loc[sel_sum, 'det_by'] = exp_dat.at[i, 'det_by'] 
-#                     master_db.loc[sel_sum, 'det_year'] = exp_dat.at[i, 'det_year'] 
-                    
-#                     #----------------------- Facultative Values. Missing is allowed --------------------------#
-#                     if ~np.isnan(exp_dat.loc[i, 'ddlat']):
-#                         master_db.loc[sel_sum, 'ddlat'] = exp_dat.at[i, 'ddlat'] 
-#                     if ~np.isnan(exp_dat.loc[i, 'ddlong']):
-#                         master_db.loc[sel_sum, 'ddlong'] = exp_dat.at[i, 'ddlong'] 
-
-#                     #----------------------- Automatic Values. Filled anyway --------------------------#
-#                     master_db.loc[sel_sum, 'status'] = 'ACCEPTED'
-#                     master_db.loc[sel_sum, 'expert_det'] = 'A_expert_det_file'
-#                     master_db.loc[sel_sum, 'prefix'] = exp_dat.at[i, 'prefix'] 
-
-#                     #----------------------- Cosmetic Values. Missing is allowed --------------------------#
-#                     # print((pd.Series(exp_dat.loc[i, 'colnum_full']).isin(['-9999','NA','<NA>','NaN'])).any())
-#                     # print('CNF', exp_dat.loc[i, 'colnum_full'])
-#                     if pd.Series(exp_dat.loc[i, 'colnum_full']).isna().any():
-#                         print('yes NA')
-#                         master_db.loc[sel_sum, 'colnum_full'] = exp_dat.at[i, 'colnum_full'] 
-#                     if pd.Series(exp_dat.loc[i, 'locality']).isna().any():
-#                         master_db.loc[sel_sum, 'locality'] = exp_dat.at[i, 'locality'] 
-
-#                     exp_dat.loc[i, 'matched'] = 'FILLED'
-
-
-
-
 
 
 

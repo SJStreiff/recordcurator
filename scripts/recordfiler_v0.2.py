@@ -4,6 +4,7 @@
 '''This program takes your CLEANED records, compares them to a masterdatabase,
 and integrates the new data in to said masterdatabase.
 
+v0.2 tries to optimise the testing and deduplicating over the different backlogs and master DBs
 
 '''
 
@@ -269,7 +270,7 @@ if __name__ == "__main__":
             exp_occs_1 = master_exp_occs
 
         # sort out indet and no_coord dat
-        exp_occs_final = cleanup.clean_up_nas(exp_occs_1, '-9999')
+        exp_occs_final = cleanup.clean_up_nas(exp_occs_1, args.na_value)
         
         indet_to_backlog = exp_occs_final[exp_occs_final.accepted_name == args.na_value] # ==NA !!
         occs = occs[occs.accepted_name != args.na_value] # NOT NA!
@@ -279,177 +280,72 @@ if __name__ == "__main__":
         logging.info('SMALLXP handling completed')
         # final data is written at end
 
+    ###---------------------- NORMAL DATASET INTEGRATION --------------------------------###
 
     else:
         # 'normal' data handling (i.e. expert = EXP / NO)
-        ###---------------------- First test against indets backlog --------------------------------###
-        logging.info('\n#> INDET consolidation')
-        logging.info('------------------------------------------------')
 
-        # check all occs against indet backlog
-        test_upd_DB = pre_merge.check_premerge(mdb = BL_indets_cc, occs = occs, verbose=True)
+        upd_masters = pre_merge.check_premerge(mdb= masters, occs=occs, verbose=True)
+        upd_masters = upd_masters.astype(z_dependencies.final_col_for_import_type)
 
-        test_upd_DB=test_upd_DB.astype(z_dependencies.final_col_for_import_type)
-
-        test_upd_DB.colnum = test_upd_DB.colnum.replace('nan', pd.NA)
-
-        # separate data with colNum and no colNum
-        occs_s_n = test_upd_DB[test_upd_DB.colnum.isna()]
-        occs_num = test_upd_DB.dropna(how='all', subset=['colnum'])
+        upd_masters = upd_masters.colnum.replace('nan', pd.NA)
+        upd_masters = upd_masters.colnum.replace('-9999', pd.NA)
+        occs_s_n = upd_masters[upd_masters.colnum.isna()]
+        occs_num = upd_masters.dropna(how='all', subset=['colnum'])
         
         # deduplicate (x2)
         occs_num_dd = dupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
                                         working_directory = args.working_directory, prefix = 'Integrating_', User = username, step='Master',
                                         expert_file = args.expert_file, verbose=True, debugging=False)
-        occs_s_n_dd = dupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
+        if len(occs_s_n) != 0:
+            occs_s_n_dd = dupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
                                     working_directory =  args.working_directory, prefix = 'Integrating_', User = username, step='Master',
                                     expert_file = args.expert_file, verbose=True, debugging=False)
-        # recombine data 
-        occs = pd.concat([occs_s_n_dd, occs_num_dd], axis=0)
-        #occs = occs.replace('\'nan\'', pd.NA)
+            # recombine data 
+            occs = pd.concat([occs_s_n_dd, occs_num_dd], axis=0)
 
-        ###--------------testing if filter by 'accepted_name' ----------------###
-                # #print(occs.status)
-                # occs.status = occs.status.replace('nan', None)
-                # occs.status = occs.status.replace('<NA>', None)
-                # # check nomencl. status
-                # logging.debug(f'INDET:::::\n {occs[~occs.status.notna()]}')
-                # indet_to_backlog = occs[occs.status.isna()] # ==NA !!
-                # occs = occs[occs.status.notna() ] # NOT NA!
-                # logging.info(f'{occs.status.notna()}')
-                # logging.info(f'{indet_to_backlog.status.notna()}')
-        ###-------------------------------------------------------------------###
+        else:
+            occs = occs_num_dd
+
+
+        # FILTER OUT BACKLOG-DATA
 
         occs.accepted_name = occs.accepted_name.replace('nan', None)
         occs.accepted_name = occs.accepted_name.replace('<NA>', None)
-        # check nomencl. status
-        logging.debug(f'INDET:::::\n {occs[~occs.accepted_name.notna()]}')
-        indet_to_backlog = occs[occs.accepted_name.isna()] # ==NA !!
-        occs = occs[occs.accepted_name.notna() ] # NOT NA!
-        logging.info(f'{occs.accepted_name.notna()}')
-
-        # merge modified BL with untouched BL
-        indet_to_backlog = pd.concat([indet_to_backlog, BL_indets_non])
-        
-        #indet_to_backlog = pd.concat([indet_to_backlog])
-        # keep indet_to_backlog and send back into server
-        indet_to_backlog.to_csv(mdb_dir + '/indet_backlog.csv', sep=';', index=False)
-        logging.info(f'{occs.status}')
-        logging.info(f'{occs.accepted_name}')
-
-
-        ###---------------------- Then test against coordinate-less data backlog --------------------------------###
-        logging.info('\n#> COORDINATE consolidation\n------------------------------------------------')
-            # geo_issues is the column name for georeferencing issues
-
-
-
-        #no_coord_bl = pd.read_csv('/Users/Serafin/Sync/1_Annonaceae/share_DB_WIP/4_DB_tmp/coord_backlog.csv', sep=';')
-        # check all occs against indet backlog
-        no_coord_check = pre_merge.check_premerge(mdb=no_coord_bl_cc, occs=occs, verbose=True)
-
-        #print(no_coord_check.dtypes)
-        no_coord_check=no_coord_check.astype(z_dependencies.final_col_for_import_type)
-        #print(no_coord_check.dtypes)
-        no_coord_check = no_coord_check.reset_index(drop=True)
-
-        occs_s_n = no_coord_check[no_coord_check['colnum_full'].isna()]
-        occs_num = no_coord_check.dropna(how='all', subset=['colnum_full'])
-
-        # deduplicate (x2)
-        occs_num_dd = dupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
-                                        working_directory = args.working_directory, prefix = 'Integrating_', User = username, step='Master',
-                                    expert_file = args.expert_file, verbose=True, debugging=False)
-        occs_s_n_dd = dupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
-                                        working_directory = args.working_directory, prefix = 'Integrating_', User = username, step='Master',
-                                    expert_file = args.expert_file, verbose=True, debugging=False)
-        # recombine data 
-        occs = pd.concat([occs_s_n_dd, occs_num_dd], axis=0)
-
+              
         occs = occs.ddlat.replace('0', np.nan)
         occs = occs.ddlong.replace('0', np.nan)
-        no_coords_to_backlog = occs[occs.ddlat.isna() ] # ==NA !!
-        occs = occs[occs.ddlat.notna() ] # NOT NA!
         
-        no_coords_to_backlog = pd.concat([no_coords_to_backlog, no_coord_bl_non])
+        # clean up and NAs
+        occs_final = cleanup.clean_up_nas(occs, args.na_value)
 
+
+        occs_final = cleanup.cleanup(occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
+
+
+        # indets
+        indet_to_backlog = occs_final[occs_final.accepted_name == args.na_value] # ==NA !!
+        occs_final = occs_final[occs_final.accepted_name != args.na_value] # NOT NA!
+        # coordinates
+        no_coords_to_backlog = occs_final[occs_final.ddlat == args.na_value] # ==NA !!
+        deduplid = occs_final[occs_final.ddlat != args.na_value] # NOT NA!
+    
+    
+        # merge modified BL with untouched BL
+        indet_to_backlog = pd.concat([indet_to_backlog, BL_indets_non])
+        # keep indet_to_backlog and send back into server
+        # merge modified BL with untouched BL
+        no_coords_to_backlog = pd.concat([no_coords_to_backlog, no_coord_bl_non])
         no_coords_to_backlog.to_csv(mdb_dir + 'coord_backlog.csv', sep=';', index=False)
 
-    
-        #print('No coordinate-less records found.')
-            # occs remains unchanged
-        logging.info(f'{occs.accepted_name}')
+    # END of exp_small if/else
 
-        ###---------------------- Then merge all with master database. Make backup of previous version. --------------------------------###
-
-        logging.info('\n#> FINAL master database consolidation')
-        logging.info('------------------------------------------------')
-
-        #print(' size:', len(occs), 'With columns:', occs.columns)
-
-
-
-
-        upd_DB = pre_merge.check_premerge(mdb = m_DB_cc, occs = occs, verbose=True)
-        # something really weird happening. Should not be as many duplicates as it gives me.
-
-        upd_DB=upd_DB.astype(z_dependencies.final_col_for_import_type)
-        #print(upd_DB.dtypes)
-
-        occs_s_n = upd_DB[upd_DB['colnum_full'].isna()]
-        occs_num = upd_DB.dropna(how='all', subset=['colnum_full'])
-        
-        
-        # deduplicate (x2)
-        occs_num_dd = dupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
-                                    working_directory =  args.working_directory, prefix = 'Integrating_', User = username, step='Master',
-                                    expert_file = args.expert_file, verbose=True, debugging=False)
-        
-        
-        if len(occs_s_n) != 0:
-            occs_s_n_dd = dupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
-                                                working_directory = args.working_directory, prefix = 'Integrating_', User = username, step='Master',
-                                                expert_file = args.expert_file, verbose=True, debugging=False)
-        
-        
-
-            # recombine data 
-            deduplid = pd.concat([occs_s_n_dd, occs_num_dd], axis=0)
-        
-        else:
-            deduplid = occs_num_dd
-        #print(deduplid.status)
-
-        #print(deduplid)
-
-        date = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
-
-        #print(date)
-
-        # print the old database back into new backup table
-
-        deduplid = pd.concat([deduplid, m_DB_non])
-
-
-        for col in deduplid.columns:
-            #deduplid[col] = deduplid[col].astype(str).str.replace('nan', '')
-            # try:
-            #     deduplid[col] = deduplid[col].fillna('')
-            #     #deduplid[col] = deduplid[col].fillna('nan')
-            # except:
-            try:
-                deduplid[col] = deduplid[col].fillna(args.na_value)
-
-            except:
-                deduplid[col] = deduplid[col].fillna(int(args.na_value))
+    # BACK-UP previous files
     no_coord_bl.to_csv(mdb_dir + '/backups/coord/'+date+'_coord_backlog.csv', sep=';')
     BL_indets.to_csv(mdb_dir + '/backups/indet/'+date+'_indet_backlog.csv', sep=';')
     m_DB.to_csv(mdb_dir + '/backups/'+date+'_master_backup.csv', sep = ';', index = False)#, mode='x')
     # the mode=x prevents overwriting an existing file...
 
-    # reduce duplicated information within cells     
-    deduplid = cleanup.cleanup(deduplid, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
-    
     logging.info('\n#> Merging steps complete.\n------------------------------------------------')
 
     logging.info(f'Trimming master database before writing: {len(deduplid)}')
@@ -463,7 +359,192 @@ if __name__ == "__main__":
     
 
 
-    #upload = False
+
+
+
+
+# # DEPRECATED?
+#         # check all occs against indet backlog
+#         test_upd_DB = pre_merge.check_premerge(mdb = BL_indets_cc, occs = occs, verbose=True)
+
+#         test_upd_DB=test_upd_DB.astype(z_dependencies.final_col_for_import_type)
+
+#         test_upd_DB.colnum = test_upd_DB.colnum.replace('nan', pd.NA)
+
+#         # separate data with colNum and no colNum
+#         occs_s_n = test_upd_DB[test_upd_DB.colnum.isna()]
+#         occs_num = test_upd_DB.dropna(how='all', subset=['colnum'])
+        
+#         # deduplicate (x2)
+#         occs_num_dd = dupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
+#                                         working_directory = args.working_directory, prefix = 'Integrating_', User = username, step='Master',
+#                                         expert_file = args.expert_file, verbose=True, debugging=False)
+        
+#         if 
+#             occs_s_n_dd = dupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
+#                                     working_directory =  args.working_directory, prefix = 'Integrating_', User = username, step='Master',
+#                                     expert_file = args.expert_file, verbose=True, debugging=False)
+#         # recombine data 
+#          occs = pd.concat([occs_s_n_dd, occs_num_dd], axis=0)
+#         #occs = occs.replace('\'nan\'', pd.NA)
+
+
+#         ###--------------testing if filter by 'accepted_name' ----------------###
+#                 # #print(occs.status)
+#                 # occs.status = occs.status.replace('nan', None)
+#                 # occs.status = occs.status.replace('<NA>', None)
+#                 # # check nomencl. status
+#                 # logging.debug(f'INDET:::::\n {occs[~occs.status.notna()]}')
+#                 # indet_to_backlog = occs[occs.status.isna()] # ==NA !!
+#                 # occs = occs[occs.status.notna() ] # NOT NA!
+#                 # logging.info(f'{occs.status.notna()}')
+#                 # logging.info(f'{indet_to_backlog.status.notna()}')
+#         ###-------------------------------------------------------------------###
+
+#         occs.accepted_name = occs.accepted_name.replace('nan', None)
+#         occs.accepted_name = occs.accepted_name.replace('<NA>', None)
+#         # check nomencl. status
+#         logging.debug(f'INDET:::::\n {occs[~occs.accepted_name.notna()]}')
+#         indet_to_backlog = occs[occs.accepted_name.isna()] # ==NA !!
+#         occs = occs[occs.accepted_name.notna() ] # NOT NA!
+#         logging.info(f'{occs.accepted_name.notna()}')
+
+#         # merge modified BL with untouched BL
+#         indet_to_backlog = pd.concat([indet_to_backlog, BL_indets_non])
+        
+#         #indet_to_backlog = pd.concat([indet_to_backlog])
+#         # keep indet_to_backlog and send back into server
+#         indet_to_backlog.to_csv(mdb_dir + '/indet_backlog.csv', sep=';', index=False)
+#         logging.info(f'{occs.status}')
+#         logging.info(f'{occs.accepted_name}')
+
+
+#         ###---------------------- Then test against coordinate-less data backlog --------------------------------###
+#         logging.info('\n#> COORDINATE consolidation\n------------------------------------------------')
+#             # geo_issues is the column name for georeferencing issues
+
+
+
+#         #no_coord_bl = pd.read_csv('/Users/Serafin/Sync/1_Annonaceae/share_DB_WIP/4_DB_tmp/coord_backlog.csv', sep=';')
+#         # check all occs against indet backlog
+#         no_coord_check = pre_merge.check_premerge(mdb=no_coord_bl_cc, occs=occs, verbose=True)
+
+#         #print(no_coord_check.dtypes)
+#         no_coord_check=no_coord_check.astype(z_dependencies.final_col_for_import_type)
+#         #print(no_coord_check.dtypes)
+#         no_coord_check = no_coord_check.reset_index(drop=True)
+
+#         occs_s_n = no_coord_check[no_coord_check['colnum_full'].isna()]
+#         occs_num = no_coord_check.dropna(how='all', subset=['colnum_full'])
+
+#         # deduplicate (x2)
+#         occs_num_dd = dupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
+#                                         working_directory = args.working_directory, prefix = 'Integrating_', User = username, step='Master',
+#                                     expert_file = args.expert_file, verbose=True, debugging=False)
+#         occs_s_n_dd = dupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
+#                                         working_directory = args.working_directory, prefix = 'Integrating_', User = username, step='Master',
+#                                     expert_file = args.expert_file, verbose=True, debugging=False)
+#         # recombine data 
+#         occs = pd.concat([occs_s_n_dd, occs_num_dd], axis=0)
+
+#         occs = occs.ddlat.replace('0', np.nan)
+#         occs = occs.ddlong.replace('0', np.nan)
+#         no_coords_to_backlog = occs[occs.ddlat.isna() ] # ==NA !!
+#         occs = occs[occs.ddlat.notna() ] # NOT NA!
+        
+#         no_coords_to_backlog = pd.concat([no_coords_to_backlog, no_coord_bl_non])
+
+#         no_coords_to_backlog.to_csv(mdb_dir + 'coord_backlog.csv', sep=';', index=False)
+
+    
+#         #print('No coordinate-less records found.')
+#             # occs remains unchanged
+#         logging.info(f'{occs.accepted_name}')
+
+#         ###---------------------- Then merge all with master database. Make backup of previous version. --------------------------------###
+
+#         logging.info('\n#> FINAL master database consolidation')
+#         logging.info('------------------------------------------------')
+
+#         #print(' size:', len(occs), 'With columns:', occs.columns)
+
+
+
+
+#         upd_DB = pre_merge.check_premerge(mdb = m_DB_cc, occs = occs, verbose=True)
+#         # something really weird happening. Should not be as many duplicates as it gives me.
+
+#         upd_DB=upd_DB.astype(z_dependencies.final_col_for_import_type)
+#         #print(upd_DB.dtypes)
+
+#         occs_s_n = upd_DB[upd_DB['colnum_full'].isna()]
+#         occs_num = upd_DB.dropna(how='all', subset=['colnum_full'])
+        
+        
+#         # deduplicate (x2)
+#         occs_num_dd = dupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
+#                                     working_directory =  args.working_directory, prefix = 'Integrating_', User = username, step='Master',
+#                                     expert_file = args.expert_file, verbose=True, debugging=False)
+        
+        
+#         if len(occs_s_n) != 0:
+#             occs_s_n_dd = dupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
+#                                                 working_directory = args.working_directory, prefix = 'Integrating_', User = username, step='Master',
+#                                                 expert_file = args.expert_file, verbose=True, debugging=False)
+        
+        
+
+#             # recombine data 
+#             deduplid = pd.concat([occs_s_n_dd, occs_num_dd], axis=0)
+        
+#         else:
+#             deduplid = occs_num_dd
+#         #print(deduplid.status)
+
+#         #print(deduplid)
+
+#         date = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
+
+#         #print(date)
+
+#         # print the old database back into new backup table
+
+#         deduplid = pd.concat([deduplid, m_DB_non])
+
+
+#         for col in deduplid.columns:
+#             #deduplid[col] = deduplid[col].astype(str).str.replace('nan', '')
+#             # try:
+#             #     deduplid[col] = deduplid[col].fillna('')
+#             #     #deduplid[col] = deduplid[col].fillna('nan')
+#             # except:
+#             try:
+#                 deduplid[col] = deduplid[col].fillna(args.na_value)
+
+#             except:
+#                 deduplid[col] = deduplid[col].fillna(int(args.na_value))
+#     no_coord_bl.to_csv(mdb_dir + '/backups/coord/'+date+'_coord_backlog.csv', sep=';')
+#     BL_indets.to_csv(mdb_dir + '/backups/indet/'+date+'_indet_backlog.csv', sep=';')
+#     m_DB.to_csv(mdb_dir + '/backups/'+date+'_master_backup.csv', sep = ';', index = False)#, mode='x')
+#     # the mode=x prevents overwriting an existing file...
+
+#     # reduce duplicated information within cells     
+#     deduplid = cleanup.cleanup(deduplid, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
+    
+#     logging.info('\n#> Merging steps complete.\n------------------------------------------------')
+
+#     logging.info(f'Trimming master database before writing: {len(deduplid)}')
+#     deduplid = deduplid[z_dependencies.final_cols_for_import]
+#     print('Final size:', len(deduplid))#, 'With columns:', deduplid.columns)
+#     print('Indet backlog size:', len(indet_to_backlog))
+#     print('No-Coord backlog size:', len(no_coords_to_backlog))
+#     # this is now the new master database...
+#     deduplid.to_csv(mdb_dir + 'master_db.csv', sep=';', index=False)
+#     logging.info(f'------------------------------------------------\n#> {len(deduplid)} Records filed away into master database.\n')
+    
+
+
+#     #upload = False
 
 
 # needs more finetuning.
