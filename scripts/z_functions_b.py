@@ -916,7 +916,7 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
         date = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
         occs_merged['modified'] = User + '_' + date
         logging.info(f'{occs_merged.modified}')
-        occs_unique['modified']
+        occs_unique['modified'] = User + '_' + date
     #    occs_cleaned = pd.merge(pd.merge(occs_merged,occs_unique,how='outer'))#,occs_nocolNum ,how='outer')
     occs_cleaned = pd.concat([occs_merged, occs_unique])
     occs_cleaned = occs_cleaned.sort_values(dup_cols, ascending = order_vec)
@@ -926,7 +926,7 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
         occs_cleaned.to_csv(working_directory+prefix+'deduplicated.csv', index = False, sep = ';', )
         logging.debug(f'\n The output was saved to {working_directory+prefix}deduplicated.csv', '\n')
 
-
+    logging.info(f'At the end of deduplication, we have {len(occs_cleaned)} records.')
 
     return occs_cleaned
 

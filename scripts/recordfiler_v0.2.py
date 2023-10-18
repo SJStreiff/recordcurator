@@ -161,9 +161,9 @@ if __name__ == "__main__":
     occs['modified'] = username + '_' + date
 
     countries_new = occs.country_iso3.unique()
-
-    print(occs.country_iso3)
-    print(occs.country_iso3)
+    logging.info(f'COuntries to subset {countries_new}')
+    # print(occs.country_iso3)
+    # print(occs.country_iso3)
 
     # if just one small group, then do some sort of subsetting
     # genus? country? ...
@@ -207,41 +207,60 @@ if __name__ == "__main__":
         logging.info('Reading local database')
         mdb_dir = args.database_name
 
-        BL_indets = pd.read_csv(mdb_dir+'/indet_backlog.csv', sep=';', dtype= z_dependencies.final_col_for_import_type, na_values=pd.NA)
+        BL_indets = pd.read_csv(mdb_dir+'/indet_backlog.csv', sep=';', dtype= z_dependencies.final_col_for_import_type, na_values=args.na_value)
         BL_indets = BL_indets.fillna(pd.NA)
     
-        BL_indets_cc = BL_indets[BL_indets.country_iso3.isin(countries_new)]
-        BL_indets_non = BL_indets[~BL_indets.country_iso3.isin(countries_new)]
+        # BL_indets_cc = BL_indets[BL_indets.country_iso3.isin(countries_new)]
+        # BL_indets_non = BL_indets[~BL_indets.country_iso3.isin(countries_new)]
 
         logging.info('NA filled!')
         #print(BL_indets)
-        try:
-            no_coord_bl = pd.read_csv(mdb_dir + '/coord_backlog.csv', sep=';', dtype= z_dependencies.final_col_for_import_type)
-            no_coord_bl = no_coord_bl.fillna(pd.NA)
 
-            no_coord_bl_cc = no_coord_bl[no_coord_bl.country_iso3.isin(countries_new)]
-            no_coord_bl_non = no_coord_bl[~no_coord_bl.country_iso3.isin(countries_new)]
+        no_coord_bl = pd.read_csv(mdb_dir + '/coord_backlog.csv', sep=';', dtype= z_dependencies.final_col_for_import_type, na_values=args.na_value)
+        no_coord_bl = no_coord_bl.fillna(pd.NA)
 
-        except:
-            #nothing
-            a = 1
+            # no_coord_bl_cc = no_coord_bl[no_coord_bl.country_iso3.isin(countries_new)]
+            # no_coord_bl_non = no_coord_bl[~no_coord_bl.country_iso3.isin(countries_new)]
 
 
         #m_DB = pd.read_csv(mdb_dir + '/20230918_master_db.csv', sep =';', dtype= z_dependencies.final_col_for_import_type, na_values=pd.NA)
-        m_DB = pd.read_csv(mdb_dir + '/master_db.csv', sep =';', dtype= z_dependencies.final_col_for_import_type, na_values=pd.NA)
+        m_DB = pd.read_csv(mdb_dir + '/master_db.csv', sep =';', dtype= z_dependencies.final_col_for_import_type, na_values=args.na_value)#, na_values=[pd.NA, args.na_value])
         m_DB = m_DB.fillna(pd.NA)
            # to make it look like the masterdb I will add all the final columns
         miss_col = [i for i in z_dependencies.final_cols_for_import if i not in m_DB.columns]
         m_DB[miss_col] = '0'
         m_DB = m_DB.astype(dtype = z_dependencies.final_col_for_import_type)
- 
-        m_DB_cc = m_DB[m_DB.country_iso3.isin(countries_new)]
-        m_DB_non = m_DB[~m_DB.country_iso3.isin(countries_new)]
+        logging.info(m_DB)
+        # m_DB_cc = m_DB[m_DB.country_iso3.isin(countries_new)]
+        # m_DB_non = m_DB[~m_DB.country_iso3.isin(countries_new)]
 
-    masters = pd.concat([no_coord_bl_cc, BL_indets_cc, m_DB_cc])
+    logging.info(f'THE INDET BACKLOG: {len(BL_indets)}')
+    logging.info(f'THE COORD BACKLOG: {len(no_coord_bl)}')
+    logging.info(f'THE MASTER: {len(m_DB)}')
+
+    masters = pd.concat([no_coord_bl, BL_indets, m_DB])
+
     # sanity check
-    if len(masters) == (len(no_coord_bl_cc) + len(BL_indets_cc) + len(m_DB_cc)):
+    if len(masters) == (len(no_coord_bl) + len(BL_indets) + len(m_DB)):
         print('YAY, debug good 1')
+    else:
+        print('Masters not correct!')
+    logging.info(masters.country_iso3)
+    masters_nonCC = masters[~masters.country_iso3.isin(countries_new)]
+    masters = masters[masters.country_iso3.isin(countries_new)]
+    master_nobc = masters[masters.barcode.isna()]
+    if len(master_nobc) > 0:
+        print('NA BARCODE')
+        print(master_nobc[['barcode', 'orig_bc']])
+        master_nobc.to_csv(mdb_dir + 'GET_RID_OF_THIS.csv', sep=';', index=False)
+        raise(Exception('THERE IS AN NaN BARCODE!!!'))
+
+
+
+    
+    logging.info(masters.country_iso3)
+    logging.info(f'Records that are not touched (not in same country):{len(masters_nonCC)}')
+    logging.info(f'Records that are in same country):{len(masters)}')
 
     # subset by countries
     
@@ -284,15 +303,23 @@ if __name__ == "__main__":
 
     else:
         # 'normal' data handling (i.e. expert = EXP / NO)
+        if len(masters) > 0:
+            upd_masters = pre_merge.check_premerge(mdb= masters, occs=occs, verbose=True)
+            upd_masters = upd_masters.astype(z_dependencies.final_col_for_import_type)
+        else:
+            upd_masters = occs
+            upd_masters = upd_masters.astype(z_dependencies.final_col_for_import_type)
 
-        upd_masters = pre_merge.check_premerge(mdb= masters, occs=occs, verbose=True)
-        upd_masters = upd_masters.astype(z_dependencies.final_col_for_import_type)
+        # test = upd_masters[upd_masters.source_id == '<NA>']
+        # logging.info(f'we have {len(test)} problems')
+        upd_masters.colnum = upd_masters.colnum.replace('nan', pd.NA)
+        upd_masters.colnum = upd_masters.colnum.replace('-9999', pd.NA)
 
-        upd_masters = upd_masters.colnum.replace('nan', pd.NA)
-        upd_masters = upd_masters.colnum.replace('-9999', pd.NA)
         occs_s_n = upd_masters[upd_masters.colnum.isna()]
         occs_num = upd_masters.dropna(how='all', subset=['colnum'])
         
+        logging.info(f'The numbered records being deduplicated {len(occs_num)}')
+        logging.info(f'The s.n. records being deduplicated {len(occs_s_n)}')
         # deduplicate (x2)
         occs_num_dd = dupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
                                         working_directory = args.working_directory, prefix = 'Integrating_', User = username, step='Master',
@@ -313,14 +340,19 @@ if __name__ == "__main__":
         occs.accepted_name = occs.accepted_name.replace('nan', None)
         occs.accepted_name = occs.accepted_name.replace('<NA>', None)
               
-        occs = occs.ddlat.replace('0', np.nan)
-        occs = occs.ddlong.replace('0', np.nan)
+        occs.ddlat = occs.ddlat.replace('0', np.nan)
+        occs.ddlong = occs.ddlong.replace('0', np.nan)
         
         # clean up and NAs
+
+
         occs_final = cleanup.clean_up_nas(occs, args.na_value)
 
-
+        occs_final = occs_final[z_dependencies.final_cols_for_import]
+        occs_final = occs_final.astype(z_dependencies.final_col_for_import_type)
         occs_final = cleanup.cleanup(occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
+
+        occs_final = pd.concat([occs_final, masters_nonCC])
 
 
         # indets
@@ -330,13 +362,14 @@ if __name__ == "__main__":
         no_coords_to_backlog = occs_final[occs_final.ddlat == args.na_value] # ==NA !!
         deduplid = occs_final[occs_final.ddlat != args.na_value] # NOT NA!
     
+
     
         # merge modified BL with untouched BL
-        indet_to_backlog = pd.concat([indet_to_backlog, BL_indets_non])
+        #indet_to_backlog = pd.concat([indet_to_backlog, BL_indets_non])
         # keep indet_to_backlog and send back into server
         # merge modified BL with untouched BL
-        no_coords_to_backlog = pd.concat([no_coords_to_backlog, no_coord_bl_non])
-        no_coords_to_backlog.to_csv(mdb_dir + 'coord_backlog.csv', sep=';', index=False)
+        #no_coords_to_backlog = pd.concat([no_coords_to_backlog, no_coord_bl_non])
+        #no_coords_to_backlog.to_csv(mdb_dir + 'coord_backlog.csv', sep=';', index=False)
 
     # END of exp_small if/else
 
@@ -354,11 +387,13 @@ if __name__ == "__main__":
     print('Indet backlog size:', len(indet_to_backlog))
     print('No-Coord backlog size:', len(no_coords_to_backlog))
     # this is now the new master database...
+    indet_to_backlog.to_csv(mdb_dir + 'indet_backlog.csv', sep=';', index=False)
+    no_coords_to_backlog.to_csv(mdb_dir + 'coord_backlog.csv', sep=';', index=False)
     deduplid.to_csv(mdb_dir + 'master_db.csv', sep=';', index=False)
     logging.info(f'------------------------------------------------\n#> {len(deduplid)} Records filed away into master database.\n')
     
 
-
+#################################################################################################################################################
 
 
 

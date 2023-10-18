@@ -46,12 +46,13 @@ def duplicated_barcodes(master_db, new_occs, verbose=True, debugging=False):
 
     print(new_occs.barcode)
     print('MASTER\n', master_db.barcode)
-
+    logging.info(f'new occs are this size {len(new_occs)}')
+    logging.info(f'MASTER are this size {len(master_db)}')
     # first some housekeeping: remove duplicated barcodes in input i.e. [barcode1, barcode2, barcode1] becomes [barcode1, barcode2]
     new_occs = new_occs[~new_occs.barcode.isna()]
     new_occs.barcode = new_occs.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated barcodes within a cell
     print('HERE1:\n',master_db[master_db.barcode.isna()])
-    master_db.barcode = master_db.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated barcodes within a cell
+    #master_db.barcode = master_db.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated barcodes within a cell
 
 
     # split new record barcode fields (just to check if there are multiple barcodes there)

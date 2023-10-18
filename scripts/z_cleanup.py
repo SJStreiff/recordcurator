@@ -61,11 +61,21 @@ def clean_up_nas(occs, NA_target):
      takes database and transforms all data to the desired NA value
      """
      # Replace NaN values with the chosen replacement value
-     occs = occs.fillna(NA_target)
+     for col in occs.columns:
+            try:
+                occs[col] = occs[col].fillna(NA_target)
 
-    # Replace 0 values with the chosen replacement value
-     occs = occs.replace(0, NA_target)
-
+            except:
+                occs[col] = occs[col].fillna(int(NA_target))
+     
+    #  try:      
+    #     occs = occs.fillna(NA_target)
+    #  except:
+    #     occs = occs.fillna(int(NA_target))
+    # # Replace 0 values with the chosen replacement value
+     occs = occs.replace(0, int(NA_target))
+     occs = occs.replace('0', NA_target)   
+     occs = occs.replace('<NA>', NA_target)
      return occs
 
 
