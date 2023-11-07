@@ -87,7 +87,12 @@ get_closest_coast = function(x, y){
 ###---------------------- Read data and do coordinate check -------------------------------------###
 
 #debugging test dataframe
- dat <- read.csv('~/Sync/1_Annonaceae/G_GLOBAL_distr_DB/2_final_data/20231009_rainbio_cleaned.csv', sep =';', head=T)
+ # dat <- read.csv('~/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/Artabotrys_20231030_cleaned.csv', sep =';', head=T,
+ #                 encoding = 'UTF-8')
+ # 
+
+#dat <- read.table('~/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/Artabotrys_20231030_cleaned_test.csv', sep =';', head = T,
+     #             encoding = 'UTF-8', quote = '"')
 
 # read the csv data
 dat <- read.csv(inputfile, header = TRUE, sep = ';')
@@ -111,11 +116,19 @@ dat[dat == '<NA> nan'] <- ''
 #dat[dat == '0'] <- ''
 dat[is.na(dat)] <- ''
 
+
+
+
+
+dat$ddlong <- as.numeric(dat$ddlong)
+dat$ddlat <- as.numeric(dat$ddlat)
 #path to shapefile
 # clines <- rgdal::readOGR(('/Users/serafin/Sync/1_Annonaceae/Y_DATA/2_land-map_rasters/ne_50m_coastline/ne_50m_coastline.shp') )
 # clines <- clines %>% st_set_crs('WGS84') #double checking, should actually already be
+#dat$ddlat <- round(dat$ddlat, digits = 8)
 
-
+# dat <- dat[-67,]
+# dat <- dat[-545,]
 test_coords <- clean_coordinates(x = dat,
                                  lon = "ddlong",
                                  lat = "ddlat",
@@ -284,6 +297,7 @@ write.table(geo_issues, file = out_file, row.names = FALSE, sep=';')
 print(paste('Annotated coordinates are written to', out_file))
 print('#> C: Coordinate checking - complete')
 
-
+# write.table(geo_issues, file='~/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/Artabotrys_20231030_spatialvalid.csv',
+#             row.names = F, sep =';')
 ###------------------------------------- R section done -----------------------------------------###
 ####################################################################################################

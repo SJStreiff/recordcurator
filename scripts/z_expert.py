@@ -64,7 +64,7 @@ def read_expert(importfile, verbose=True):
 
 
 # det date
-    exp_dat[['det_year', 'det_month', 'det_day']] = exp_dat['det_date'].str.split("-", expand=True)
+    exp_dat[['det_year', 'det_month', 'det_day']] = exp_dat['det_date'].str.split("/", expand=True)
 
 
 
@@ -92,6 +92,8 @@ def deduplicate_small_experts(master_db, exp_dat, verbose=True):
     """
 
     # first some housekeeping: remove duplicated barcodes in input i.e. [barcode1, barcode2, barcode1] becomes [barcode1, barcode2]
+    print(sum(pd.isna(exp_dat.barcode)))
+    exp_dat = exp_dat.dropna(subset = ['barcode'])
     exp_dat.barcode = exp_dat.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated barcodes within a cell
     master_db.barcode = master_db.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated barcodes within a cell
 
@@ -105,6 +107,7 @@ def deduplicate_small_experts(master_db, exp_dat, verbose=True):
     bc_dupli_split = exp_dat['barcode'].str.split(',', expand = True) # split potential barcodes separated by ','
     bc_dupli_split.columns = [f'bc_{i}' for i in range(bc_dupli_split.shape[1])] # give the columns names..
     bc_dupli_split = bc_dupli_split.apply(lambda x: x.str.strip())
+    print(bc_dupli_split.shape)
     # some information if there are issues
     logging.debug(f'NEW OCCS:\n {bc_dupli_split}')
     logging.debug(f'NEW OCCS:\n {type(bc_dupli_split)}')
@@ -116,7 +119,17 @@ def deduplicate_small_experts(master_db, exp_dat, verbose=True):
     logging.debug(f'master OCCS:\n {master_bc_split}')
 
     # to make an exceptions dataframe get structure from master
+
+    master_db.recorded_by = master_db.recorded_by.fillna('')
+    exp_dat.recorded_by = exp_dat.recorded_by.fillna('')
+    
+
+    exp_dat_except = exp_dat[exp_dat.barcode == '']
+    exp_dat = exp_dat[exp_dat.barcode != '']
+
+
     exceptions = master_db.head(1)
+    exceptions = pd.concat([exceptions, exp_dat_except])
 
     # for progress bar in console output
     total_iterations = len(exp_dat)
@@ -125,6 +138,8 @@ def deduplicate_small_experts(master_db, exp_dat, verbose=True):
         # the tqdm does the progress bar
 
         barcode = list(bc_dupli_split.loc[i].astype(str))
+        print('INFO', barcode)
+        print('MASTER:', master_db.shape)
             # logging.info(f'BARCODE1: {barcode}')
         # if multiple barcodes in the barcode field, iterate across them
         for x in  range(len(barcode)):
@@ -149,38 +164,66 @@ def deduplicate_small_experts(master_db, exp_dat, verbose=True):
             
                 if sel_sum.sum() == 0:
                     # logging.info('NO MATCHES FOUND!')
+                    logging.info('NO MATCH')
                     out_barcode = pd.DataFrame([bar])
 
                 # in this case we do not modify anything!
 
                 else:
+                    logging.info(bar)
+                    #print('SELSUM', sel_sum.shape)
+                    logging.info(master_db.shape)
                     out_barcode = pd.Series(master_db.barcode[sel_sum]).astype(str)
                     out_barcode.reset_index(drop = True, inplace = True)
 
 
-                # replace i-th element of the new barcodes with the matched complete range of barcodes from master
-            
-                input = str(exp_dat.at[i, 'barcode'])
-                master = str(out_barcode[0])
-                new = input + ', ' + master
+                    # replace i-th element of the new barcodes with the matched complete range of barcodes from master
+                
+                    input = str(exp_dat.at[i, 'barcode'])
+                    master = str(out_barcode[0])
+                    new = input + ', ' + master
 
-                # reduce duplicated values
-                new = ', '.join(set(new.split(', ')))
+                    # reduce duplicated values
+                    new = ', '.join(set(new.split(', ')))
+                    logging.info(f'Barcode matching:')
+                    logging.info(input)
+                    logging.info(master)
+                    logging.info(new)
 
-                # QUICK CHECK if recorded by and colnum are identical. Flag and save to special file if not
-                print('1', master_db.loc[sel_sum, 'recorded_by'].item())
-                print('2', exp_dat.loc[i, 'recorded_by'])
-                if master_db.loc[sel_sum, 'recorded_by'].item() == (exp_dat.loc[i, 'recorded_by']):
+                    # QUICK CHECK if recorded by and colnum are identical. Flag and save to special file if not
+                    #print('SUM', sum(sel_sum))
+
+                    #print('1', master_db.loc[sel_sum, 'recorded_by'])
+
+                    #print(master_db.loc[sel_sum, 'recorded_by'].shape)
+
+                    if len(master_db.loc[sel_sum, 'recorded_by'])==1:
+                        logging.info('only 1')
+                        test_mastername = master_db.loc[sel_sum, 'recorded_by'].item()
+                    else:
+                        print('more than 2')
+                        tmp1 = pd.DataFrame(master_db.loc[sel_sum, 'recorded_by'])
+                        print(tmp1)
+                        tmp1.reset_index(inplace=True, drop=True)
+                        tmp2 = tmp1.loc[0,]
+                        print(tmp2)
+                        test_mastername = tmp2.item()
+
+
+                    #print('2', exp_dat.loc[i, 'recorded_by'])
+                    if test_mastername == (exp_dat.loc[i, 'recorded_by']):
+                        logging.info('Names do not match...')
+                        logging.info(f'{input}')
 
                     #----------------------- Imperative Values. Missing is not allowed ----------------------#
                     if exp_dat.loc[i,['accepted_name', 'det_by', 'det_year']].isna().any() == True:
                         # make a visible error message and raise exception (abort)
                         print('\n#--> Something is WRONG here:\n',
-                              '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',
-                              exp_dat.loc[i,['accepted_name', 'det_by', 'det_year']],
-                              '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',
-                              '\n I am aborting the program. Please carefully check your input data.\n',
-                              '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',)
+                            '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',
+                            exp_dat.loc[i,['accepted_name', 'det_by', 'det_year']],
+                            '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',
+                            '\n I am aborting the program. Please carefully check your input data.\n',
+                            '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',)
                         raise(Exception('One of \'accepted_name\', \'det_by\', or \'det_year\' is NA.\n',
                                         'I do not allow such records as expert data....'))
                     # otherwise the crucial data is here so we can proceed...
@@ -204,7 +247,7 @@ def deduplicate_small_experts(master_db, exp_dat, verbose=True):
                     # print((pd.Series(exp_dat.loc[i, 'colnum_full']).isin(['-9999','NA','<NA>','NaN'])).any())
                     # print('CNF', exp_dat.loc[i, 'colnum_full'])
                     if pd.Series(exp_dat.loc[i, 'colnum_full']).isna().any():
-                        print('yes NA')
+                        logging.info('colnum full yes NA')
                         master_db.loc[sel_sum, 'colnum_full'] = exp_dat.at[i, 'colnum_full'] 
                     if pd.Series(exp_dat.loc[i, 'locality']).isna().any():
                         master_db.loc[sel_sum, 'locality'] = exp_dat.at[i, 'locality'] 
@@ -212,27 +255,21 @@ def deduplicate_small_experts(master_db, exp_dat, verbose=True):
                     exp_dat.loc[i, 'matched'] = 'FILLED'
 
 
-                else:
-                    # exception where 'recorded_by' do not match
-                    new_except = pd.concat([master_db.loc[sel_sum], pd.DataFrame(exp_dat.loc[i]).transpose()]) # see if this works...
-                    # drop the offending rows for manual editing and adding later
-                    master_db = master_db.loc[~sel_sum]
-                    try:
-                        # if exception already exists add concat
-                        exceptions  = pd.concat([exceptions, new_except])
-                    except:
-                        # otherwise new 
-                        exceptions = new_except
-                # at the end of for loop print exceptions to file, let me manually redo it.
-    print('MATCHED?', exp_dat.matched)
+        # end of for loop barcodes
+                    logging.info(f'done {barcode}')
+    # same for exp dat
+    exp_dat = exp_dat[exp_dat.matched != 'PROBLEM']
+    # print(master_db.shape)
+    # print('MATCHED?', exp_dat.matched)
     exp_dat_to_integrate = exp_dat[exp_dat.matched != 'FILLED']
-    print(exp_dat_to_integrate)
+    # print(exp_dat_to_integrate)
 
     # as we may have some data remaining, we just append it ot the master, as it's expert perfect ( in theory for our purposes)
-    master_db =  pd.concat([master_db, exp_dat_to_integrate])
+    master_db =  pd.concat([master_db, exp_dat_to_integrate], axis=0)
+    print('master goin out', master_db.shape)
     ## TODO## TODO## TODO## TODO## TODO## TODO## TODO## TODO## TODO## TODO
 
-    return master_db, exceptions
+    return master_db#, #exceptions
 
 
 def integrate_exp_exceptions(integration_file, exp_dat):
@@ -271,7 +308,7 @@ def expert_ipni(species_name):
     '''
     #print('Checking uptodate-ness of nomenclature in your dataset...')
 
-    query = species_name
+    query = species_name.strip()
         #print(query)
     res = ipni.search(query, filters = ipni_filter.specific) # so we don't get a mess with infraspecific names
         #res = ipni.search(query, filters=Filters.species)  # , filters = [Filters.accepted])
@@ -287,6 +324,8 @@ def expert_ipni(species_name):
         #logging.debug('IPNI publication year found.')
     except:
         ipni_pubYr = pd.NA
+        ipni_no = pd.NA
+        ipni_author = pd.NA
 
     return ipni_pubYr, ipni_no, ipni_author
 
@@ -501,6 +540,30 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
 
 
 
+expert_types = {#'global_id': str,
+    #'childData_id': str,
+	#'accSpecies_id': str,
+    'source_id': str,
+	'genus': str,
+	'specific_epithet': str,
+    'recorded_by': str,
+    'colnum_full': str,
+	'prefix': str,
+	'colnum': str,
+	'sufix': str,
+	'det_by': str,
+	'det_date': str,
+    'det_day': pd.Int64Dtype(),
+    'det_month': pd.Int64Dtype(),
+    'det_year': pd.Int64Dtype(),
+	'country_iso3': str,
+	'locality': str,
+	'ddlong': float,
+    'ddlat': float,
+    'barcode': str,
+    'accepted_name': str,
+    'ipni_no': str,
+    }
 
 
 

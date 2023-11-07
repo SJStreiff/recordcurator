@@ -269,33 +269,46 @@ if __name__ == "__main__":
     if args.expert_file == 'SMALLEXP':
         logging.info('#> SMALL EXPERT file. separate step')
 
-        exp_occs = occs
+        exp_occs = occs 
 
-        master_exp_occs, exceptions = expert.deduplicate_small_experts(masters, exp_occs)
+        # master_exp_occs, exceptions = expert.deduplicate_small_experts(masters, exp_occs)
+        master_exp_occs = expert.deduplicate_small_experts(masters, exp_occs)
+
+# NOT SURE YET IF DEPRECATED EXCEPTIONS OF EXPERT DETS...
         # by way the exceptions df is created we need the tail(-1)
-        exceptions = exceptions.tail(-1)
-        # then go through exceptions manually and reintegrate
-        if len(exceptions) > 1:
-            #let user modify exceptions
-            exceptions.to_csv(args.working_directory+args.prefix+'expert_exceptions.csv', index=False, sep =';')
-            print('I have written exceptions to',
-                  args.working_directory+args.prefix+'expert_exceptions.csv', 
-                  '\n for you to check. Please do so and save the file for me to read it again once finished.')
-            disexceptions = input()
-            file=args.output_dir+args.prefix+'expert_exceptions.csv'
+        # exceptions = exceptions.tail(-1)
+        # # then go through exceptions manually and reintegrate
+        # if len(exceptions) > 1:
+        #     #let user modify exceptions
+        #     date = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
 
-            exp_occs_1 = expert.integrate_exp_exceptions(file, master_exp_occs)
-        else:
-            exp_occs_1 = master_exp_occs
+        #     exceptions.to_csv(args.working_directory+date+'expert_exceptions.csv', index=False, sep =';')
+        #     print('I have written exceptions to',
+        #           args.working_directory+date+'expert_exceptions.csv', 
+        #           '\n for you to check. Please do so and save the file for me to read it again once finished.')
+        #     disexceptions = input()
+        #     file=args.output_dir+date+'expert_exceptions.csv'
 
+        #     exp_occs_1 = expert.integrate_exp_exceptions(file, master_exp_occs)
+#######         
+        #else:
+        exp_occs_1 = master_exp_occs
         # sort out indet and no_coord dat
+        # reattach data not used, cleanup, sort out and save new master
         exp_occs_final = cleanup.clean_up_nas(exp_occs_1, args.na_value)
-        
-        indet_to_backlog = exp_occs_final[exp_occs_final.accepted_name == args.na_value] # ==NA !!
-        occs = occs[occs.accepted_name != args.na_value] # NOT NA!
+        exp_occs_final = exp_occs_final[z_dependencies.final_cols_for_import]
+        exp_occs_final = exp_occs_final.astype(z_dependencies.final_col_for_import_type)
+        exp_occs_final = cleanup.cleanup(exp_occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
+        exp_occs_final = pd.concat([exp_occs_final, masters_nonCC], axis=0)
+
+        # INDET
+        indet_to_backlog = exp_occs_final[exp_occs_final.accepted_name == args.na_value] # ==NA !!      
+        occs = exp_occs_final[exp_occs_final.accepted_name != args.na_value] # NOT NA!
+        # COORDS
         no_coords_to_backlog = occs[occs.ddlat == args.na_value] # ==NA !!
         deduplid = occs[occs.ddlat != args.na_value] # NOT NA!
     
+        #print(deduplid.shape)
         logging.info('SMALLXP handling completed')
         # final data is written at end
 
@@ -352,7 +365,7 @@ if __name__ == "__main__":
         occs_final = occs_final.astype(z_dependencies.final_col_for_import_type)
         occs_final = cleanup.cleanup(occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
 
-        occs_final = pd.concat([occs_final, masters_nonCC])
+        occs_final = pd.concat([occs_final, masters_nonCC], axis=0)
 
 
         # indets

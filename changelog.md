@@ -50,3 +50,5 @@
     - added expert det capability (untested!) when expert data only has collector name and collection number
     - streamlined recordfiler (only one large crossreference of datasets instead of 3). file duplicated to 'recordfiler_v0.2'
     
+# 2023-11-02:
+    - debugging and refining expert pipeline

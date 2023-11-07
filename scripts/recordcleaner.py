@@ -95,13 +95,15 @@ if __name__ == "__main__":
         print('small EXpert setting')
         logging.info('#> SMALL EXPERT file. separate step')
         exp_occs = small_exp.read_expert(args.input_file)
-        #huh
+
+        logging.info('\n ................................\n')
         exp_occs_2 = huh_query.huh_wrapper(exp_occs, verbose = True, debugging = False)
         #ipni
         exp_occs_3 = small_exp.exp_run_ipni(exp_occs_2)
         exp_occs_4 = stepB2.country_crossfill(exp_occs_3, verbose=True)
         exp_occs_4 = stepB2.cc_missing(exp_occs_4, verbose=True)
         #done
+        exp_occs_4 = exp_occs_4.astype(small_exp.expert_types)
         exp_occs_4.to_csv(args.output_directory+args.prefix+'cleaned.csv', index=False, sep=';')
 
     else:
