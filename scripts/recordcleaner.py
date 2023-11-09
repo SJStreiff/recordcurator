@@ -194,7 +194,7 @@ if __name__ == "__main__":
         logging.info('\n#> B1: Duplication statistics etc\n')
         # Step B1: Duplication (sensitivity) statistics and separating out of << s.n. >> Collection numbers
         tmp_colnum, tmp_s_n = stepB.duplicate_stats(tmp_occs_3, args.working_directory, args.prefix)
-#TODO
+
         # for records with a collection number
         dup_cols = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_id'] # the columns by which duplicates are identified
 

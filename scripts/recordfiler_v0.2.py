@@ -271,8 +271,15 @@ if __name__ == "__main__":
 
         exp_occs = occs 
 
+        # if we have a barcode, deduplicate/integrate by that. 
         # master_exp_occs, exceptions = expert.deduplicate_small_experts(masters, exp_occs)
-        master_exp_occs = expert.deduplicate_small_experts(masters, exp_occs)
+        if exp_occs.barcode.notna().all():
+            master_exp_occs = expert.deduplicate_small_experts(masters, exp_occs)
+
+        # alternatively, deduplicate in the traditional way,
+            # by collector name, collection number, country, year,prefix and sufix
+        else:
+            master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(master_db=masters, exp_occs)
 
 # NOT SURE YET IF DEPRECATED EXCEPTIONS OF EXPERT DETS...
         # by way the exceptions df is created we need the tail(-1)

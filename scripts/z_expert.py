@@ -66,7 +66,20 @@ def read_expert(importfile, verbose=True):
 # det date
     exp_dat[['det_year', 'det_month', 'det_day']] = exp_dat['det_date'].str.split("/", expand=True)
 
+    exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace('Collector(s):', '', regex=False)
+    exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace('Unknown', '', regex=False)
+    exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace('&', ';', regex=False)
+    exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace(' y ', ';', regex=False)
+    exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace(' and ', ';', regex=False)
+    exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace('Jr.', '', regex=False)
+    exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace('et al.', '', regex=False)
+    exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace('et al', '', regex=False)
+    exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace('etal', '', regex=False)
+    #isolate just the first collector (before a semicolon)
+    exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.split(';').str[0]
+    exp_dat['recorded_by'] = exp_dat['recorded_by'].str.strip() # remove whitespace
 
+    print(exp_dat.recorded_by)
 
     exp_dat[['huh_name', 'geo_col', 'wiki_url']] = '0'
     exp_dat['orig_recby'] = exp_dat['recorded_by']
