@@ -91,8 +91,8 @@ get_closest_coast = function(x, y){
  #                 encoding = 'UTF-8')
  # 
 
-#dat <- read.table('~/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/Artabotrys_20231030_cleaned_test.csv', sep =';', head = T,
-     #             encoding = 'UTF-8', quote = '"')
+dat <- read.table('~/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/Artabotrys_20231109_cleaned.csv', sep =';', head = T,
+                  encoding = 'UTF-8', quote = '"')
 
 # read the csv data
 dat <- read.csv(inputfile, header = TRUE, sep = ';')
@@ -239,10 +239,15 @@ if(length(flags_tt$.sea) > 0){
 
   # final data from coordinate check
   flags_final <- rbind(flags_no_sea, dat_to_int)
+  
+  # and crossfill these dataframes so we can easily merge afterwards
+  no_coord_dat$old_ddlong <- NA
+  no_coord_dat$old_ddlat <- NA
 
-  }else{
+
+}else{
   flags_final <- flags_no_sea
-  }
+}
 ###--------------------- END of coordinate saving -----------------------------------------------###
 ####################################################################################################
 
@@ -270,9 +275,6 @@ for(j in newcols){
 # make a new column with all issues together in one cell.
 geo_issues <- tidyr::unite(flags_final, geo_issues, any_of(newcols), sep = '-', na.rm = TRUE) 
 # sep with '-' to keep ',' reserved for separating duplicates
-
-no_coord_dat$old_ddlong <- rep(NA, length(no_coord_dat$scientific_name))
-no_coord_dat$old_ddlat <- rep(NA, length(no_coord_dat$scientific_name))
 
 # add empty coordinates back in. These are sorted later
 geo_issues <- rbind(geo_issues, no_coord_dat)

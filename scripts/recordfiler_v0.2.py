@@ -274,12 +274,14 @@ if __name__ == "__main__":
         # if we have a barcode, deduplicate/integrate by that. 
         # master_exp_occs, exceptions = expert.deduplicate_small_experts(masters, exp_occs)
         if exp_occs.barcode.notna().all():
+            print('we have barcodes, deduplicating by BARCODE')
             master_exp_occs = expert.deduplicate_small_experts(masters, exp_occs)
 
         # alternatively, deduplicate in the traditional way,
             # by collector name, collection number, country, year,prefix and sufix
         else:
-            master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(master_db=masters, exp_occs)
+            print('no barcodes, deuduplicating by collector+number')
+            master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(master_db=masters, exp_dat=exp_occs)
 
 # NOT SURE YET IF DEPRECATED EXCEPTIONS OF EXPERT DETS...
         # by way the exceptions df is created we need the tail(-1)
@@ -314,8 +316,10 @@ if __name__ == "__main__":
         # COORDS
         no_coords_to_backlog = occs[occs.ddlat == args.na_value] # ==NA !!
         deduplid = occs[occs.ddlat != args.na_value] # NOT NA!
-    
-        #print(deduplid.shape)
+
+        print(deduplid.shape)
+        # print('DEBUG stopping....')
+        # stop
         logging.info('SMALLXP handling completed')
         # final data is written at end
 

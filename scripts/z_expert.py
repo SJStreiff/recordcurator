@@ -61,10 +61,14 @@ def read_expert(importfile, verbose=True):
     exp_dat['colnum']  = exp_dat.colnum_full.str.extract('(' + '|'.join(regex_list_digits) + ')')
     exp_dat['colnum'] = exp_dat['colnum'].str.strip()
 
-
+    logging.info('col_nums modified')
 
 # det date
     exp_dat[['det_year', 'det_month', 'det_day']] = exp_dat['det_date'].str.split("/", expand=True)
+    try:
+        exp_dat[['col_year', 'col_month', 'col_day']] = exp_dat['col_date'].str.split("/", expand=True)
+    except:
+        print('no col_date found')
 
     exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace('Collector(s):', '', regex=False)
     exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace('Unknown', '', regex=False)
@@ -81,11 +85,163 @@ def read_expert(importfile, verbose=True):
 
     print(exp_dat.recorded_by)
 
-    exp_dat[['huh_name', 'geo_col', 'wiki_url']] = '0'
-    exp_dat['orig_recby'] = exp_dat['recorded_by']
-    exp_dat['col_year'] = pd.NA
 
-    return exp_dat
+    exp_dat['orig_recby'] = exp_dat['recorded_by']
+    extr_list = {
+            #r'^([A-ZÀ-Ÿ][a-zà-ÿ]\-[A-ZÀ-Ÿ][a-zà-ÿ]\W+[A-ZÀ-Ÿ][a-zà-ÿ])' : r'\1', # a name with Name-Name Name
+            #r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\W+([A-ZÀ-Ÿ]{2,5})' : r'\1, \2', #Surname FMN
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([a-zà-ÿ]{0,3})' : r'\1, \2\3\4\5 \6',  # all full full names with sep = ' ' plus Surname F van
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+' : r'\1, \2\3\4\5',  # all full full names with sep = ' '
+
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([a-zà-ÿ]{0,3})' : r'\1, \2\3\4 \5',  # all full full names with sep = ' ' plus Surname F van
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+' : r'\1, \2\3\4',  # all full full names with sep = ' '
+
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([a-zà-ÿ]{0,3})': r'\1, \2\3 \4',  # all full names: 2 given names # + VAN
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])[a-zà-ÿ]+\s+([A-ZÀ-Ÿ])[a-zà-ÿ]+': r'\1, \2\3',  # all full names: 2 given names
+
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])[a-zà-ÿ]{2,20}\s+([a-zà-ÿ]{0,3})': r'\1, \2 \3',  # just SURNAME, Firstname  # + VAN
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])[a-zà-ÿ]{2,20}': r'\1, \2',  # just SURNAME, Firstname
+
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W*\s+([a-zà-ÿ]{0,3})\Z': r'\1, \2\3\4\5 \6',  # Surname, F(.) M(.) M(.)M(.) # VAN
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W*': r'\1, \2\3\4',  # Surname, F(.) M(.) M(.)M(.)
+
+
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W*\s+([a-zà-ÿ]{0,3})\Z': r'\1, \2\3\4 \5',  # Surname, F(.) M(.) M(.) # VAN
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W*': r'\1, \2\3\4',  # Surname, F(.) M(.) M(.)
+
+            r'(^[A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W\s+([a-zà-ÿ]{0,3})\,.+': r'\1, \2\3\4 \5',  # Surname, F(.) M(.) M(.), other collectors
+            r'(^[A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W\,.+': r'\1, \2\3\4',  # Surname, F(.) M(.) M(.), other collectors
+
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+\s+([a-zà-ÿ]{0,3})\Z': r'\1, \2\3 \4',  # Surname, F(.) M(.)
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+\Z': r'\1, \2\3',  # Surname, F(.) M(.)
+
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\W+([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])\s+([a-zà-ÿ]{0,3})': r'\1, \2\3\4\5 \6',  # Surname FMMM
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\W+([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])': r'\1, \2\3\4\5',  # Surname FMMM
+
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\W+([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])\s+([a-zà-ÿ]{0,3})': r'\1, \2\3\4 \5',  # Surname FMM
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\W+([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])': r'\1, \2\3\4',  # Surname FMM
+
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\W+([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])\s+([a-zà-ÿ]{0,3})\Z': r'\1, \2\3 \4',  # Surname FM
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\W+([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])\Z': r'\1, \2\3',  # Surname FM
+
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\W+([A-ZÀ-Ÿ])\s+([a-zà-ÿ]{0,3})\Z': r'\1, \2 \3',  # Surname F
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\W+([A-ZÀ-Ÿ])\Z': r'\1, \2',  # Surname F
+
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\W*\Z': r'\1',  # Surname without anything
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])\W+\s+([a-zà-ÿ]{0,3})': r'\1, \2 \3',  # Surname, F(.)
+            r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\,\W+([A-ZÀ-Ÿ])\W+': r'\1, \2',  # Surname, F(.)
+
+            r'^([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\6, \1\2\3\4 \5', # Firstname Mid Nid Surname ...
+            r'^([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\5, \1\2\3\4', # Firstname Mid Nid Surname ...
+
+            r'^([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\5, \1\2\3 \4', # Firstname Mid Nid Surname ...
+            r'^([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\4, \1\2\3', # Firstname Mid Nid Surname ...
+
+            r'^([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\4, \1\2 \3', # Firstname Mid Surname ...
+            r'^([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\3, \1\2', # Firstname Mid Surname ...
+
+            r'^([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])\W+([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\4, \1\2 \3', # Firstname M. Surname ...
+            r'^([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\3, \1\2', # Firstname M. Surname ...
+
+            r'^([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\3, \1 \2', # Firstname Surname
+            r'^([A-ZÀ-Ÿ])[a-zà-ÿ]+\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\2, \1', # Firstname Surname
+
+            r'^([A-ZÀ-Ÿ])\W+([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\2, \1', # F. Surname ...
+            r'^([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\2, \1', # F. Surname ...
+
+            r'^([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\4, \1\2 \3', #F. M. van  Surname
+            r'^([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\3, \1\2', #F. M. Surname
+            
+            r'^([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\5, \1\2\3 \4', #F. M. M. van Surname
+            r'^([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\4, \1\2\3', #F. M. M. van Surname
+
+            r'^([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\6, \1\2\3\4 \5', #F. M. M. M. van Surname
+            r'^([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\5, \1\2\3\4', #F. M. M. M. van Surname
+
+            r'^([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])\W+([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\6, \1\2\3\4 \5', #FMMM Surname
+            r'^([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\5, \1\2\3\4', #FMM Surname
+
+
+            r'^([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])\W+([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\5, \1\2\3 \4', #FMM Surname
+            r'^([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\4, \1\2\3', #FMM Surname
+
+            r'^([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])\W+([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\4, \1\2 \3', #FM Surname
+            r'^([A-ZÀ-Ÿ])([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\3, \1\2', #FM Surname
+
+            r'^([A-ZÀ-Ÿ])\W+([a-zà-ÿ]{0,3})\s([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\3, \1 \2', #F Surname
+            r'^([A-ZÀ-Ÿ])\W+([A-ZÀ-Ÿ][a-zà-ÿ]+)': r'\2, \1', #F Surname
+            #r'^([A-ZÀ-Ÿ][a-zà-ÿ]+)\W+([A-ZÀ-Ÿ]{2,5})' : r'\1, \2', #Surname FMN
+
+        }
+
+
+    # The row within the extr_list corresponds to the column in the debugging dataframe printed below
+
+
+    names_WIP = exp_dat[['recorded_by']] #.astype(str)
+
+    #print(names_WIP)
+    i = 0
+    for key, value in extr_list.items():
+        i = i+1
+        # make a new panda series with the regex matches/replacements
+        X1 = names_WIP.recorded_by.str.replace(key, value, regex = True)
+        # replace any fields that matched with empty string, so following regex cannot match.
+        names_WIP.loc[:,'recorded_by'] = names_WIP.loc[:,'recorded_by'].str.replace(key, '', regex = True)
+        # make new columns for every iteration
+        names_WIP.loc[:,i] = X1 #.copy()
+
+    #####
+    # Now i need to just merge the columns from the right and bobs-your-uncle we have beautiful collector names...
+    names_WIP = names_WIP.mask(names_WIP == '') # mask all empty values to overwrite them potentially
+    names_WIP = names_WIP.mask(names_WIP == ' ')
+
+    #-------------------------------------------------------------------------------
+    # For all names that didn't match anything:
+    # extract and then check manually
+    TC_exp_dat = exp_dat.copy()
+    TC_exp_dat['to_check'] = names_WIP['recorded_by']
+
+
+    # mask all values that didn't match for whatever reason in the dataframe (results in NaN)
+    names_WIP = names_WIP.mask(names_WIP.recorded_by.notna())
+
+    # now merge all columns into one
+    while(len(names_WIP.columns) > 1): # while there are more than one column, merge the last two, with the one on the right having priority
+        i = i+1
+        names_WIP.iloc[:,-1] = names_WIP.iloc[:,-1].fillna(names_WIP.iloc[:,-2])
+        names_WIP = names_WIP.drop(names_WIP.columns[-2], axis = 1)
+        #print(names_WIP) # for debugging, makes a lot of output
+        #print('So many columns:', len(names_WIP.columns), '\n')
+    #print(type(names_WIP))
+
+
+    #print('----------------------\n', names_WIP, '----------------------\n')
+    # just to be sure to know where it didn't match
+    names_WIP.columns = ['corrnames']
+    names_WIP = names_WIP.astype(str)
+
+    # now merge these cleaned names into the output dataframe
+    exp_dat_newnames = exp_dat.assign(recorded_by = names_WIP['corrnames'])
+    exp_dat_newnames['recorded_by'] = exp_dat_newnames['recorded_by'].replace('nan', 'ZZZ_THIS_NAME_FAILED')
+    exp_dat_newnames['recorded_by'] = exp_dat_newnames['recorded_by'].replace('<NA>', 'ZZZ_THIS_NAME_FAILED')
+
+    #print(exp_dat_newnames.recorded_by)
+    # remove records I cannot work with...
+    exp_dat_newnames = exp_dat_newnames[exp_dat_newnames['recorded_by'] != 'ZZZ_THIS_NAME_FAILED']
+
+
+    logging.debug(f'The cleaned name format: {exp_dat_newnames.recorded_by}')
+    # ------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------
+    print(exp_dat_newnames.recorded_by)
+
+
+    exp_dat_newnames[['huh_name', 'geo_col', 'wiki_url']] = '0'
+   
+    exp_dat_newnames['col_year'] = pd.NA
+
+    return exp_dat_newnames
 
 
 # do HUH
@@ -364,13 +520,12 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
          but needs at least one of these
     """
 
-
     #----------------------- Imperative Values. Missing is not allowed ----------------------#
-    if exp_dat.loc[['recorded_by', 'colnum', 'det_by', 'det_year']].isna().any() == True:
+    if exp_dat[['recorded_by', 'colnum', 'det_by', 'det_year']].isna().any().any() == True:
         # make a visible error message and raise exception (abort)
         print('\n#--> Something is WRONG here:\n',
                 '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',
-                exp_dat.loc[['recorded_by', 'colnum', 'det_by', 'det_year']],
+                exp_dat[['recorded_by', 'colnum', 'det_by', 'det_year']],
                 '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',
                 '\n I am aborting the program. Please carefully check your input data.\n',
                 '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',)
@@ -384,18 +539,19 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
     # concatenate
     occs = pd.concat([master_db, exp_dat])
     # find duplicates
-    occs_dup = occs[occs.duplicated(subset=['recorded_by', 'colnum','suffix', 'prefix' ], keep=False)]
-    occs_nondup = occs.drop_duplicates(subset=['recorded_by', 'colnum', 'suffix', 'prefix'], keep=False)
+    occs_dup = occs[occs.duplicated(subset=['recorded_by', 'colnum','sufix', 'prefix' ], keep=False)]
+    occs_nondup = occs.drop_duplicates(subset=['recorded_by', 'colnum', 'sufix', 'prefix'], keep=False)
 
     # deduplicate the matched duplicates
-    occs_dup = occs_dup.sort_value(['recorced_by', 'colnum', 'database_from'], ascending = [True, True, True])
+    occs_dup = occs_dup.sort_values(['recorded_by', 'colnum', 'database_from'], ascending = [True, True, True])
 
     # test if we have a determination, coordinates or both
-    if exp_dat.loc['accepted_name'].notna().all() == True: #   .isna().any() == True:
+    print(exp_dat.accepted_name)
+    if exp_dat['accepted_name'].notna().all() == True: #   .isna().any() == True:
         print('EXPERT WITH ACCEPTED_NAME')
         if exp_dat['ddlat'].notna().any():
             print('ACCEPTED_NAME and COORDINATES')
-            experts_merged = occs_dup.groupby(['recorded_by', 'colnum','suffix', 'prefix'], as_index = False).agg(
+            experts_merged = occs_dup.groupby(['recorded_by', 'colnum','sufix', 'prefix'], as_index = False).agg(
                             scientific_name = pd.NamedAgg(column = 'scientific_name', aggfunc = 'last'),
                             genus = pd.NamedAgg(column = 'genus', aggfunc =  'last'),
                             specific_epithet = pd.NamedAgg(column = 'specific_epithet', aggfunc = 'last' ),
@@ -440,7 +596,7 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
                             )
         else:
             print('ACCEPTED_NAME but no coordinates')
-            experts_merged = occs_dup.groupby(['recorded_by', 'colnum','suffix', 'prefix'], as_index = False).agg(
+            experts_merged = occs_dup.groupby(['recorded_by', 'colnum','sufix', 'prefix'], as_index = False).agg(
                             scientific_name = pd.NamedAgg(column = 'scientific_name', aggfunc = 'last'),
                             genus = pd.NamedAgg(column = 'genus', aggfunc =  'last'),
                             specific_epithet = pd.NamedAgg(column = 'specific_epithet', aggfunc = 'last' ),
@@ -487,7 +643,7 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
     elif exp_dat['ddlat'].notna().any():
         print('EXPERT WITH COORDINATES but no accepted_name')
 
-        experts_merged = occs_dup.groupby(['recorded_by', 'colnum','suffix', 'prefix'], as_index = False).agg(
+        experts_merged = occs_dup.groupby(['recorded_by', 'colnum','sufix', 'prefix'], as_index = False).agg(
                         scientific_name = pd.NamedAgg(column = 'scientific_name', aggfunc = 'last'),
                         genus = pd.NamedAgg(column = 'genus', aggfunc =  'last'),
                         specific_epithet = pd.NamedAgg(column = 'specific_epithet', aggfunc = 'last' ),
@@ -533,14 +689,14 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
     else:
         print('noting to integrate as both accepted_name and coordinates are recognised as NA!!')
 
-    experts_merged # is the merged data!
+    #experts_merged # is the merged data!
 
     # retreive EXP data that did not match anything and return to user for 
     no_match = occs_nondup[occs_nondup.database_from == 'EXPERT']
 
     occs_nondup = occs_nondup[occs_nondup.database_from == 'MASTER']
 
-    master_updated = pd.concat([occs_nondup, experts_merged])
+    master_updated = pd.concat([occs_nondup, experts_merged, no_match])
 
 
     ### do some final integration stats
@@ -549,7 +705,7 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
     print('####################################')
     print('Master is of size: ', len(master_updated))
 
-    return master_updated, no_match
+    return master_updated
 
 
 

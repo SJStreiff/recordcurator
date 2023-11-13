@@ -1,6 +1,3 @@
----
-
----
 
 # Recordcurator
 
@@ -8,6 +5,7 @@ This pipeline consists of three somewhat independent but complementary steps:
 * RECORDCLEANER:  takes raw occurrence records and cleans them to standardised format. The main feature here is that we merge duplicate collections, while retaining all the information of the different iso-specimens.
 * COORDINATE-CHECK: takes the cleaned data, checks and flags coordinates with the *CoordinateCleaner* R-package (https://github.com/ropensci/CoordinateCleaner)
 * RECORD-FILER:  integrates the data cleaned in RECORDCLEANER into a master database.
+
 
 ## Installation
 
@@ -19,6 +17,7 @@ git clone https://github.com/SJStreiff/recordcurator
 You need a number of python packages to run these scripts. We recommend to use a conda environment to install the dependencies.
 WIth conda installed, navigate to your 'recordcurator' folder with the enclosed *'environment.yml'* file. Once there, execute the command *conda env create -f environment.yml*. By default, the environment will be named **recordcurator**, but you can change this in the first line of the environment.yml file.
 Follow this up with *conda activate recordcurator*, followed by  *pip install pykew country-converter*. Now you are ready to start using the pipeline. I strongly recommend you look at the supplied configuration file *launch.sh*, where you can specify options, inputs and outputs. 
+
 
 
 ## Standardising occurrence records: RECORDCLEANER
