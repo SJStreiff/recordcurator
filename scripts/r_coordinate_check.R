@@ -91,8 +91,8 @@ get_closest_coast = function(x, y){
  #                 encoding = 'UTF-8')
  # 
 
-dat <- read.table('~/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/Artabotrys_20231109_cleaned.csv', sep =';', head = T,
-                  encoding = 'UTF-8', quote = '"')
+dat <- read.csv('~/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/2_final_data/20231113_PAm_cleaned.csv', sep =';', head = T)
+#                  encoding = 'UTF-8', quote = '"')
 
 # read the csv data
 dat <- read.csv(inputfile, header = TRUE, sep = ';')
@@ -129,12 +129,12 @@ dat$ddlat <- as.numeric(dat$ddlat)
 
 # dat <- dat[-67,]
 # dat <- dat[-545,]
-test_coords <- clean_coordinates(x = dat,
-                                 lon = "ddlong",
-                                 lat = "ddlat",
-                                 species = 'accepted_name',
-                                 countries = "country_iso3",
-                                 tests = c('equal', 'zeros'))
+# test_coords <- clean_coordinates(x = dat,
+#                                  lon = "ddlong",
+#                                  lat = "ddlat",
+#                                  species = 'accepted_name',
+#                                  countries = "country_iso3",
+#                                  tests = c('equal', 'zeros'))
 
 # coordinate cleaner 
 flags <- clean_coordinates(x = dat,
@@ -241,9 +241,10 @@ if(length(flags_tt$.sea) > 0){
   flags_final <- rbind(flags_no_sea, dat_to_int)
   
   # and crossfill these dataframes so we can easily merge afterwards
-  no_coord_dat$old_ddlong <- NA
-  no_coord_dat$old_ddlat <- NA
-
+  if(length(no_coord_dat$country_id) > 0){
+    no_coord_dat$old_ddlong <- NA
+    no_coord_dat$old_ddlat <- NA
+  }
 
 }else{
   flags_final <- flags_no_sea
@@ -277,8 +278,11 @@ geo_issues <- tidyr::unite(flags_final, geo_issues, any_of(newcols), sep = '-', 
 # sep with '-' to keep ',' reserved for separating duplicates
 
 # add empty coordinates back in. These are sorted later
-geo_issues <- rbind(geo_issues, no_coord_dat)
-
+if(length(no_coord_dat$country_id) > 0){
+  geo_issues <- rbind(geo_issues, no_coord_dat)
+}else{
+  geo_issues <- geo_issues
+}
 
 ####################################################################################################
 ###-------------------- some final issues being resolved from other steps -----------------------###

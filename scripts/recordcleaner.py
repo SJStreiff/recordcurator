@@ -37,7 +37,7 @@ if __name__ == "__main__":
                         type = pathlib.Path)
     parser.add_argument('data_type',
                         help = 'File format. So far I can only handle Darwin core (GBIF) or herbonautes (P)',
-                        type = str, choices=['GBIF', 'P', 'BRAHMS', 'MO', 'RAINBIO']) # modify if anything else becomes available.
+                        type = str, choices=['GBIF', 'P', 'BRAHMS', 'MO', 'RAINBIO', 'MO_tropicos']) # modify if anything else becomes available.
     parser.add_argument('expert_file',
                          help = 'Specify if input file is of expert source (i.e. all determinations and coordinates etc. are to have priority over other/previous data)',
                          type = str,
@@ -100,10 +100,25 @@ if __name__ == "__main__":
         exp_occs_2 = huh_query.huh_wrapper(exp_occs, verbose = True, debugging = False)
         #ipni
         exp_occs_3 = small_exp.exp_run_ipni(exp_occs_2)
-        exp_occs_4 = stepB2.country_crossfill(exp_occs_3, verbose=True)
-        exp_occs_4 = stepB2.cc_missing(exp_occs_4, verbose=True)
+
+        print(exp_occs_3.columns)
+        try:
+            print(sum(exp_occs_3.ddlat.isna()))
+        except:
+            print('did not find DDLAT')
+        if any(col in {'country', 'country_id'} for col in exp_occs_3.columns):
+            exp_occs_4 = stepB2.country_crossfill(exp_occs_3, verbose=True)
+            if {'ddlat', 'ddlong'}.issubset(exp_occs_3.columns):
+                exp_occs_4 = stepB2.cc_missing(exp_occs_4, verbose=True)
+            else:
+                print('No coordinates to fill in missing countries')
+        else:
+            exp_occs_4 = exp_occs_3
         #done
-        exp_occs_4 = exp_occs_4.astype(small_exp.expert_types)
+        try:
+            exp_occs_4 = exp_occs_4.astype(small_exp.expert_types)
+        except:
+            exp_occs_4 = exp_occs_4.astype(small_exp.expert_min_types)
         exp_occs_4.to_csv(args.output_directory+args.prefix+'cleaned.csv', index=False, sep=';')
 
     else:

@@ -6,6 +6,8 @@ All the functions called from the main script for namechecking the Harvard Unive
 (https://kiki.huh.harvard.edu/databases/botanist_index.html)
 
 2023-01-10 sjs
+2023-11-16:
+    removed country from criteria: was never being used, sometimes not available when using with expert dataset citations
     
 CONTAINS:
 
@@ -48,11 +50,11 @@ recordedBy = "Wilde, WJ de"
 
 
 
-def get_HUH_names(recordedBy, colyear, country, orig_recby, verbose=True, debugging=False):
+def get_HUH_names(recordedBy, colyear, orig_recby, verbose=True, debugging=False):
     """ Query the HUH database on botanists/collectors names.
     In: recordedBy: Collector name cleaned with regex,
         colyear: collection year of record 
-        country: country of collection
+        country: country of collection -- REMOVED
         orig_recby: original unmmodified Recorded By field 
         verbose: Minimum info on what's going on
         debugging: Maximum info for identifying bugs....
@@ -653,13 +655,15 @@ def get_HUH_names(recordedBy, colyear, country, orig_recby, verbose=True, debugg
 
         logging.debug(f'final vote {finalvote}')
         # If still more than 1 name in the dataframe, do geography check
-        if len(df_checked.name) > 1:
-            logging.debug("resorting to geography")
-            #print(df_checked.geo_col)
-            df_checked = df_checked[df_checked.geo_col == country]
-            if len(df_checked.name) == 1:
-                finalvote = True
-        logging.info(f'finalcheck {df_checked}')       
+        # if country == '0':
+        #     logging.info('no geography available')
+        # elif len(df_checked.name) > 1:
+        #     logging.debug("resorting to geography")
+        #     #print(df_checked.geo_col)
+        #     df_checked = df_checked[df_checked.geo_col == country]
+        #     if len(df_checked.name) == 1:
+        #         finalvote = True
+        # logging.info(f'finalcheck {df_checked}')       
         try:
             df_checked = df_checked.assign(finalvote = pd.DataFrame(finalvote))
         except:
@@ -722,7 +726,9 @@ def huh_wrapper(occs, verbose=True, debugging=False):
     # make backup of regexed name
     occs['recby_regex'] = occs['recorded_by']
     # subset the columns of interest for querying...
-    mod_data = occs[['recorded_by', 'col_year', 'country', 'orig_recby']]
+    #mod_data = occs[['recorded_by', 'col_year', 'country', 'orig_recby']]
+    mod_data = occs[['recorded_by', 'col_year', 'orig_recby']]
+
     # drop duplicated names
     mod_data = mod_data.drop_duplicates(subset = 'recorded_by', keep='last')
     
@@ -732,9 +738,13 @@ def huh_wrapper(occs, verbose=True, debugging=False):
 
 
     # run the HUH name function on the mod_data dataframe
-    mod_data[['huh_name','geo_col', 'wiki_url']] = mod_data.swifter.apply(lambda row: get_HUH_names(row['recorded_by'], row['col_year'], row['country'], 
+    # mod_data[['huh_name','geo_col', 'wiki_url']] = mod_data.swifter.apply(lambda row: get_HUH_names(row['recorded_by'], row['col_year'], row['country'], 
+    #                                                                                         row['orig_recby'], verbose, debugging), axis = 1, result_type='expand')
+    mod_data[['huh_name','geo_col', 'wiki_url']] = mod_data.swifter.apply(lambda row: get_HUH_names(row['recorded_by'], row['col_year'], 
                                                                                             row['orig_recby'], verbose, debugging), axis = 1, result_type='expand')
-    
+   
+
+
     logging.info(mod_data)
     # set index so we can reintegrate the resulting data
     # 
@@ -747,7 +757,8 @@ def huh_wrapper(occs, verbose=True, debugging=False):
     # check dtype
     mod_data = mod_data.astype(str)
     # drop columns we really don't need reintegrated in the original data
-    mod_data = mod_data.drop(['col_year', 'country', 'orig_recby'], axis=1)
+    #mod_data = mod_data.drop(['col_year', 'country', 'orig_recby'], axis=1)
+    mod_data = mod_data.drop(['col_year', 'orig_recby'], axis=1)
     # print('new index...?', mod_data.dtypes)
 
     # merge queried data into original dataframe

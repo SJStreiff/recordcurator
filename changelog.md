@@ -52,3 +52,7 @@
     
 # 2023-11-02:
     - debugging and refining expert pipeline
+
+# 2023-11-16:
+    - huh remove country requirement, not used and problem when expert without country information
+    - expert running clean without coordinates/countries

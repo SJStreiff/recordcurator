@@ -522,6 +522,17 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
 
     #----------------------- Imperative Values. Missing is not allowed ----------------------#
     if exp_dat[['recorded_by', 'colnum', 'det_by', 'det_year']].isna().any().any() == True:
+
+
+        print(exp_dat[['recorded_by', 'colnum', 'det_by', 'det_year']].isna())
+        print('DEBUGGING:\n',
+              'recorded_by:', sum(exp_dat.recorded_by.isna()),
+              'colnum:', sum(exp_dat.colnum.isna()),
+                'det_by:', sum(exp_dat.det_by.isna()),
+                'det_year:', sum(exp_dat.det_year.isna()))
+        print(exp_dat[exp_dat.colnum.isna()])
+
+
         # make a visible error message and raise exception (abort)
         print('\n#--> Something is WRONG here:\n',
                 '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',
@@ -532,6 +543,15 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
         raise(Exception('One of \'recorded_by\', \'colnum\', \'det_by\', or \'det_year\' is NA.\n',
                         'I do not allow such records as expert data....'))
     
+
+
+
+    if {'ddlat', 'ddlong'}.issubset(exp_dat.columns):
+        print('Data has coordinate columns')
+    else:
+        exp_dat['ddlat'] = pd.NA
+        exp_dat['ddlong'] = pd.NA
+
 
     # no exception, continue
     master_db['database_from'] = 'MASTER'
@@ -693,7 +713,7 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
 
     # retreive EXP data that did not match anything and return to user for 
     no_match = occs_nondup[occs_nondup.database_from == 'EXPERT']
-
+    no_match.barcode = 'EXPERT_NOBC'
     occs_nondup = occs_nondup[occs_nondup.database_from == 'MASTER']
 
     master_updated = pd.concat([occs_nondup, experts_merged, no_match])
@@ -735,7 +755,23 @@ expert_types = {#'global_id': str,
     }
 
 
-
+expert_min_types= {
+    'source_id': str,
+	'genus': str,
+	'specific_epithet': str,
+    'recorded_by': str,
+    'colnum_full': str,
+	'prefix': str,
+	'colnum': str,
+	'sufix': str,
+	'det_by': str,
+	'det_date': str,
+    'det_day': pd.Int64Dtype(),
+    'det_month': pd.Int64Dtype(),
+    'det_year': pd.Int64Dtype(),
+    'accepted_name': str,
+    'ipni_no': str,
+    }
 
 
 # # # # # # # # --- DEBUGGING LINES ----- # # # # # # # 

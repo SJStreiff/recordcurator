@@ -160,8 +160,16 @@ if __name__ == "__main__":
     date = date = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
     occs['modified'] = username + '_' + date
 
-    countries_new = occs.country_iso3.unique()
-    logging.info(f'COuntries to subset {countries_new}')
+    try:
+        countries_new = occs.country_iso3.unique()
+        logging.info(f'Countries to subset in master {countries_new}')
+        MASTER_SUBSET = 'C'
+    except:
+        # no countries in input dataset
+        logging.info(f'No countries to subset, so doing entire DB crosscheck!')
+        MASTER_SUBSET = 'N'
+
+
     # print(occs.country_iso3)
     # print(occs.country_iso3)
 
@@ -242,12 +250,26 @@ if __name__ == "__main__":
 
     # sanity check
     if len(masters) == (len(no_coord_bl) + len(BL_indets) + len(m_DB)):
-        print('YAY, debug good 1')
+        print('Master good!')
     else:
         print('Masters not correct!')
-    logging.info(masters.country_iso3)
-    masters_nonCC = masters[~masters.country_iso3.isin(countries_new)]
-    masters = masters[masters.country_iso3.isin(countries_new)]
+
+    if MASTER_SUBSET=='C':
+        # subsetting master by countries
+        logging.info('Subsetting master by countries')
+        logging.info(masters.country_iso3)
+        masters_nonCC = masters[~masters.country_iso3.isin(countries_new)]
+        masters = masters[masters.country_iso3.isin(countries_new)]
+        logging.info(f'Records that are not touched (not in same country):{len(masters_nonCC)}')
+        logging.info(f'Records that are in same country):{len(masters)}')
+
+    elif MASTER_SUBSET=='N':
+        # subsetting master by recorded_by
+        logging.info('Not subsetting master ')
+        # masters stays masters, no recombining necessary below
+        logging.info(f'Records master being used):{len(masters)}')
+
+ 
     master_nobc = masters[masters.barcode.isna()]
     if len(master_nobc) > 0:
         print('NA BARCODE')
@@ -255,12 +277,8 @@ if __name__ == "__main__":
         master_nobc.to_csv(mdb_dir + 'GET_RID_OF_THIS.csv', sep=';', index=False)
         raise(Exception('THERE IS AN NaN BARCODE!!!'))
 
-
-
-    
-    logging.info(masters.country_iso3)
-    logging.info(f'Records that are not touched (not in same country):{len(masters_nonCC)}')
-    logging.info(f'Records that are in same country):{len(masters)}')
+   
+#    logging.info(masters.country_iso3)
 
     # subset by countries
     
@@ -273,33 +291,17 @@ if __name__ == "__main__":
 
         # if we have a barcode, deduplicate/integrate by that. 
         # master_exp_occs, exceptions = expert.deduplicate_small_experts(masters, exp_occs)
-        if exp_occs.barcode.notna().all():
-            print('we have barcodes, deduplicating by BARCODE')
-            master_exp_occs = expert.deduplicate_small_experts(masters, exp_occs)
-
+        if {'barcode'}.issubset(exp_occs.columns):
+            if exp_occs.barcode.notna().all():
+                print('we have barcodes, deduplicating by BARCODE')
+                master_exp_occs = expert.deduplicate_small_experts(masters, exp_occs)
         # alternatively, deduplicate in the traditional way,
             # by collector name, collection number, country, year,prefix and sufix
         else:
             print('no barcodes, deuduplicating by collector+number')
             master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(master_db=masters, exp_dat=exp_occs)
 
-# NOT SURE YET IF DEPRECATED EXCEPTIONS OF EXPERT DETS...
-        # by way the exceptions df is created we need the tail(-1)
-        # exceptions = exceptions.tail(-1)
-        # # then go through exceptions manually and reintegrate
-        # if len(exceptions) > 1:
-        #     #let user modify exceptions
-        #     date = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
-
-        #     exceptions.to_csv(args.working_directory+date+'expert_exceptions.csv', index=False, sep =';')
-        #     print('I have written exceptions to',
-        #           args.working_directory+date+'expert_exceptions.csv', 
-        #           '\n for you to check. Please do so and save the file for me to read it again once finished.')
-        #     disexceptions = input()
-        #     file=args.output_dir+date+'expert_exceptions.csv'
-
-        #     exp_occs_1 = expert.integrate_exp_exceptions(file, master_exp_occs)
-#######         
+ 
         #else:
         exp_occs_1 = master_exp_occs
         # sort out indet and no_coord dat
@@ -308,7 +310,12 @@ if __name__ == "__main__":
         exp_occs_final = exp_occs_final[z_dependencies.final_cols_for_import]
         exp_occs_final = exp_occs_final.astype(z_dependencies.final_col_for_import_type)
         exp_occs_final = cleanup.cleanup(exp_occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
-        exp_occs_final = pd.concat([exp_occs_final, masters_nonCC], axis=0)
+  
+        if MASTER_SUBSET == 'C':
+            exp_occs_final = pd.concat([exp_occs_final, masters_nonCC], axis=0)
+        elif MASTER_SUBSET == 'N':
+            # exp_occs_final stays put
+            print('Master and exp already complete, not COUNTRY subset to add (no subset preformed.)')
 
         # INDET
         indet_to_backlog = exp_occs_final[exp_occs_final.accepted_name == args.na_value] # ==NA !!      
@@ -376,8 +383,10 @@ if __name__ == "__main__":
         occs_final = occs_final.astype(z_dependencies.final_col_for_import_type)
         occs_final = cleanup.cleanup(occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
 
-        occs_final = pd.concat([occs_final, masters_nonCC], axis=0)
-
+        if MASTER_SUBSET == 'C':
+            occs_final = pd.concat([occs_final, masters_nonCC], axis=0)
+        elif MASTER_SUBSET == 'N':
+            occs_final = occs_final
 
         # indets
         indet_to_backlog = occs_final[occs_final.accepted_name == args.na_value] # ==NA !!

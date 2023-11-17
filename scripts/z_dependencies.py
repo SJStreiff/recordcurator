@@ -360,11 +360,15 @@ rainbio_cols =([#'source_id',
     ])
 
 MO_key = {
-    'DeterminationFullNameNoAuthors':'species-tobesplit',
+    'SpecimenID':'barcode',
+    'DeterminationFullNameNoAuthors':'scientific_name',
+    'genus':'genus',
+    'specific_epithet':'specific_epithet',
     'SeniorCollector':'recorded_by',
     'CollectionNumber': 'col_num',
     'CountryName': 'country',
-    'region':'region',
+    'UpperName'	:'upper-region',
+    'LowerName':'lower-region',
     'Locality':'locality',
     'decimalLatitude':'ddlat',
     'decimalLongitude': 'ddlong',
@@ -375,11 +379,16 @@ MO_key = {
     'DeterminationYear':'det_year'
 }
 
-MO_cols = (['species-tobesplit',
+MO_cols = ([
+    'barcode',
+    'scientific_name',
+    'genus',
+    'specific_epithet',
+    'upper-region',
+    'lower-region',
     'recorded_by',
     'col_num',
     'country',
-    'region',
     'locality',
     'ddlat',
     'ddlong',

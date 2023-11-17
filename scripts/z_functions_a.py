@@ -89,17 +89,19 @@ def column_standardiser(importfile, data_source_type, verbose=True, debugging = 
         #occs = occs.fillna(pd.NA) # problems with this NA
         occs['source_id'] = 'brahms'
 
-    elif(data_source_type == 'MO'):
+    elif(data_source_type == 'MO_tropicos'):
         # for data from BRAHMS extracts
         logging.info('data type MO')
-        occs = pd.read_csv(imp, sep = ',',  dtype = str, na_values=pd.NA, quotechar='"') # read data
+        occs = pd.read_csv(imp, sep = ';',  dtype = str, na_values=pd.NA, quotechar='"') # read data
         
-        occs = occs.rename(columns = z_dependencies.brahms_key) # rename
+        occs = occs.rename(columns = z_dependencies.MO_key) # rename
 
-        occs = occs[z_dependencies.brahms_cols] # and subset
+        occs = occs[z_dependencies.MO_cols] # and subset
         #occs = occs.fillna(pd.NA) # problems with this NA
         occs['source_id'] = 'MO_tropicos'
 
+
+        print(occs[occs.scientific_name == 'Mosannona raimondii'])
 
     elif(data_source_type == 'RAINBIO'):
         # for data from BRAHMS extracts
@@ -500,7 +502,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
 
         # darwin core specific...
 
-        occs[['tmp', 'specific_epithet']] = occs['species-tobesplit'].str.split(' ', expand = True)
+        occs[['genus', 'specific_epithet']] = occs['species-tobesplit'].str.split(' ', expand = True)
         #print(occs.tmp)
 
 
@@ -525,7 +527,6 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
         """things that need to be done in the BRAHMS data:
             - colnum_full for completeness (= prefix+colnum+sufix)
         """
-    # -------------------------------------
         #remove odd na values
         occs.prefix = occs.prefix.str.replace('nan', '')
         occs.sufix = occs.sufix.str.replace('nan', '')
@@ -535,6 +536,25 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
         occs['orig_bc'] = occs['barcode']
         occs['country_id'] = pd.NA
 
+
+    #-------------------------------------------------------------------------------
+    if(data_source_type == 'MO_tropicos'):
+        """things that need to be done in the MO data:
+            - barcode: add 'MO'
+            - region: merge upper and lower
+            - colnum/colnum full cross fill, add prefix/sufix as NA (NA in data...)
+        """
+        #remove odd na values
+        occs['prefix'] = pd.NA
+        occs['sufix'] = pd.NA
+        # make colnum_full
+        occs['region'] = occs['upper-region'] + occs['lower-region']
+        occs['colnum_full'] = occs.colnum
+        # for completeness we need this
+        occs['orig_bc'] = occs['barcode']
+        occs['country_id'] = pd.NA
+        occs['barcode'] = 'MO'+occs['barcode']
+       
     #----------------------------------------------------------------------------------
     if(data_source_type == 'RAINBIO'):
         """ things needed:
@@ -587,8 +607,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
 
 
 
-
-        #MO split species-tobesplit
+    #----------------------------------------------------------------------------------
 
 
     occs = occs.astype(dtype = z_dependencies.final_col_type) # check data type
