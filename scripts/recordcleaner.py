@@ -37,7 +37,7 @@ if __name__ == "__main__":
                         type = pathlib.Path)
     parser.add_argument('data_type',
                         help = 'File format. So far I can only handle Darwin core (GBIF) or herbonautes (P)',
-                        type = str, choices=['GBIF', 'P', 'BRAHMS', 'MO', 'RAINBIO', 'MO_tropicos']) # modify if anything else becomes available.
+                        type = str, choices=['GBIF', 'P', 'BRAHMS', 'MO', 'RAINBIO', 'MO_tropicos', 'SPLINK']) # modify if anything else becomes available.
     parser.add_argument('expert_file',
                          help = 'Specify if input file is of expert source (i.e. all determinations and coordinates etc. are to have priority over other/previous data)',
                          type = str,
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         tmp_colnum, tmp_s_n = stepB.duplicate_stats(tmp_occs_3, args.working_directory, args.prefix)
 
         # for records with a collection number
-        dup_cols = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_id'] # the columns by which duplicates are identified
+        dup_cols = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'] # the columns by which duplicates are identified
 
         #-----------------------------------------------
         logging.info('\n#> B2: Duplicates - merge duplicate records \n')
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     
         #-----------------------------------------------
         # only for records with no Collection number
-        dup_cols1 = ['recorded_by', 'col_year', 'col_month', 'col_day', 'genus', 'specific_epithet', 'country_id'] # the columns by which duplicates are identified
+        dup_cols1 = ['recorded_by', 'col_year', 'col_month', 'col_day', 'genus', 'specific_epithet', 'country_iso3', 'locality'] # the columns by which duplicates are identified
         logging.info('\n#> B3: Duplicates - merge <s.n.> duplicate records \n')
         # Step B3: s.n. deduplicate
         tmp_s_n_1 = stepB.duplicate_cleaner(tmp_s_n, dupli = dup_cols1, working_directory= args.working_directory, prefix= args.prefix, User='NA', expert_file= args.expert_file, verbose=False, debugging=False)

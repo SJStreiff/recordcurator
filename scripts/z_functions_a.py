@@ -114,6 +114,17 @@ def column_standardiser(importfile, data_source_type, verbose=True, debugging = 
         #occs = occs.fillna(pd.NA) # problems with this NA
         occs['source_id'] = 'RAINBIO'
 
+    elif(data_source_type=='SPLINK'):
+         # for data from BRAHMS extracts
+        logging.info('data type SPLINK')
+        occs = pd.read_csv(imp, sep = '\t',  dtype = str, na_values=pd.NA, quotechar='"') # read data
+        
+        occs = occs.rename(columns = z_dependencies.splink_key) # rename
+
+        occs = occs[z_dependencies.splink_cols] # and subset
+        #occs = occs.fillna(pd.NA) # problems with this NA
+        occs['source_id'] = 'SPLINK'
+
 
 
 
@@ -545,8 +556,41 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
             - colnum/colnum full cross fill, add prefix/sufix as NA (NA in data...)
         """
         #remove odd na values
-        occs['prefix'] = pd.NA
-        occs['sufix'] = pd.NA
+        #create prefix, extract text before the number
+        occs['prefix'] = occs.colnum_full.str.extract('^([a-zA-Z]*)')
+        ##this code deletes spaces at start or end
+        occs['prefix'] = occs['prefix'].str.strip()
+
+        #create sufix , extract text or pattern after the number
+        #you can create different regex expressions here. The point of this code is to have the extract into a single and same colum
+        #otherwise it creates different coloumns for each pattern.
+        # see here: https://toltman.medium.com/matching-multiple-regex-patterns-in-pandas-121d6127dd47
+
+        regex_list_sufix = [
+          r'(?:[a-zA-Z ]*)$', ## any charcter at the end
+          r'(?:SR_\d{1,})', ## extract 'SR_' followed by 1 to 3 digits
+          r'(?:R_\d{1,})', ## extract 'R_' followed by 1 to 3 digits
+        ]
+
+        occs['sufix'] = occs['colnum_full'].astype(str).str.extract('(' + '|'.join(regex_list_sufix) + ')')
+        occs['sufix'] = occs['sufix'].str.strip()
+
+        # extract only number (colNam)
+
+        regex_list_digits = [
+            r'(?:\d+\-\d+\-\d+)', # of structure 00-00-00
+            r'(?:\d+\-\d+)', # of structure 00-00
+            r'(?:\d+\.\d+)', # 00.00
+            r'(?:\d+)', # 00000
+        ]
+        occs['colnum']  = occs['colnum_full'].astype(str).str.extract('(' + '|'.join(regex_list_digits) + ')')
+        print(occs[['colnum_full', 'colnum']])
+
+        occs['colnum'] = occs['colnum'].str.strip()
+
+        occs['colnum'].replace('nan', pd.NA, inplace=True)
+
+
         # make colnum_full
         occs['region'] = occs['upper-region'] + occs['lower-region']
         occs['colnum_full'] = occs.colnum
@@ -603,6 +647,199 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
         logging.debug(f'{occs.dtypes}')
 
         occs = occs.replace({'nan': pd.NA}, regex=False) # remove NAs that aren't proper
+
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+    #----------------------------------------------------------------------------------
+    if(data_source_type == 'SPLINK'):
+        """ things needed:
+         - colnum splitting
+         - BARCODE formatting
+         """
+    # -----------------------------------------------------------------------
+    # Barcode issues:
+    # sonetimes the herbarium is in the column institute, sometimes herbarium_code, sometimes before the actual barcode number...
+            # check for different barcode formats:
+            # either just numeric : herb missing
+            #     --> merge herbarium and code
+
+        logging.info('Reformatting problematic barcodes and standardising them.')
+        logging.debug(f'{occs.barcode}')
+
+
+        # if there is a nondigit, take it away from the digits, and modify it to contain only letters
+        barcode_regex = [
+            r'^(\w+)$', # digit and letters
+            r'(\d+\-\d+\/\d+)$', # digit separated by - and /
+            r'(\d+\:\d+\:\d+)$', # digit separated by :
+            r'(\d+\-\d+)$', # digit separated by - 
+            r'(\d+\/\d+)$', # digit separated by /
+            r'(\d+\.\d+)$', # digit separated by .
+            r'(\d+\s\d+)$', # digit separated by space
+            r'(\d+)$', # digit
+        ]
+        # extract the numeric part of the barcode
+        bc_extract = occs['barcode'].astype(str).str.extract('(' + '|'.join(barcode_regex) + ')')
+        #occs['prel_bc'] = occs['prel_bc'].str.strip()
+
+        logging.debug(f'Numeric part of barcodes extracted {bc_extract}')
+
+        i=0
+        while(len(bc_extract.columns) > 1): # while there are more than one column, merge the last two, with the one on the right having priority
+            i = i+1
+            bc_extract.iloc[:,-1] = bc_extract.iloc[:,-1].fillna(bc_extract.iloc[:,-2])
+            bc_extract = bc_extract.drop(bc_extract.columns[-2], axis = 1)
+            #print(names_WIP) # for debugging, makes a lot of output
+            #print('So many columns:', len(names_WIP.columns), '\n')
+        logging.debug(f'barcodes extracted: {bc_extract}')
+        # reassign into dataframe
+        occs['prel_bc'] = bc_extract
+
+        logging.debug(f'Prelim. barcode: {occs.prel_bc}')
+        # now get the herbarium code. First if it was correct to start with, extract from barcode.
+        bc = pd.Series(occs['barcode'])
+
+        prel_herbCode = occs['barcode'].str.extract(r'(^[A-Z]+\-[A-Z]+\-)') # gets most issues... ABC-DE-000000
+        prel_herbCode = prel_herbCode.fillna(bc.str.extract(r'(^[A-Z]+\s[A-Z]+)')) # ABC DE00000
+        prel_herbCode = prel_herbCode.fillna(bc.str.extract(r'(^[A-Z]+\-)')) # ABC-00000
+        prel_herbCode = prel_herbCode.fillna(bc.str.extract(r'(^[A-Z]+)')) #ABC000
+        # If still no luck, take the capital letters in 'Institute'
+        prel_herbCode = prel_herbCode.fillna(occs['herbarium_code'].str.extract(r'(^[A-Z]+)')) # desperately scrape whatever is in the 'herbarium_code' column if we still have no indication to where the barcode belongs
+        prel_herbCode = prel_herbCode.fillna(occs['institute'].str.extract(r'(^[A-Z]+)')) # desperately scrape whatever is in the 'institute' column if we still have no indication to where the barcode belongs
+
+        occs = occs.assign(prel_herbCode = prel_herbCode)
+        occs['prel_code'] = occs['barcode'].astype(str).str.extract(r'(\D+)')
+        occs['prel_code_X'] = occs['barcode'].astype(str).str.extract(r'(\d+\.\d)') # this is just one entry and really f@#$R%g annoying
+
+        logging.debug(f'Prelim. barcode Type: {type(occs.prel_code)}')
+        logging.debug(f'Institute would be: {occs.institute}')
+        
+        logging.debug(f'Prel. Herbarium code: {occs.prel_herbCode}')
+
+        # if the barcode column was purely numericm integrate
+        occs['tmp_hc'] = occs['institute'].str.extract(r'(^[A-Z]+\Z)')
+        occs['tmp_hc'] = occs['barcode'].str.extract(r'(^[A-Z]+\-[A-Z]+\-)')
+        #occs['hc_tmp_tmp'] = occs['herbarium_code'].str.extract(r'(^[A-Z]+\Z)')
+        #occs['tmp_hc'].fillna(occs.hc_tmp_tmp, inplace = True)
+        occs['tmp_hc'] = occs['tmp_hc'].replace({'PLANT': 'TAIF'})
+        #occs['tmp_hc'] = occs['tmp_hc'].str.replace('PLANT', '')
+        occs.prel_herbCode.fillna(occs['tmp_hc'], inplace = True)
+        occs.prel_herbCode.fillna('', inplace = True)
+        #occs[occs['herbarium_code'] == r'([A-Z]+)', 'tmp_test'] = 'True'
+        
+        logging.debug(f'TMP herb code: {occs.tmp_hc}')
+        # this now works, but,
+            # we have an issue with very few institutions messing up the order in which stuff is supposed to be...
+            # (TAIF)
+
+        #occs.institute.fillna(occs.prel_herbCode, inplace=True)
+        print('DEBUG:', pd.isna(occs.prel_bc.str.extract(r'([A-Z])')))
+        occs['sel_col_bc'] = pd.isna(occs['prel_bc'].str.extract(r'([A-Z])'))
+        occs.loc[occs['sel_col_bc'] == False, 'prel_herbCode'] = ''
+        logging.debug(f'prel_code: {occs.prel_herbCode}')
+        logging.debug(f'{occs.prel_bc}')
+        occs.drop
+
+
+
+        occs['st_barcode'] = occs['prel_herbCode'] + occs['prel_bc']
+        occs['st_barcode'] = occs.st_barcode.astype(str)
+        
+        # for i in occs.st_barcode:
+
+        #     j = re.findall(r'([A-Z])', i)
+        #     print(len(i), i, len(j))
+        # indexbc = pd.isna(occs.st_barcode.str.extract(r'([A-Z])'))
+        # logging.debug(indexbc)
+        # print('HERE', indexbc, type(indexbc))
+        # print('HERE again', indexbc.value_counts())
+        
+
+        logging.debug(f'{occs.st_barcode}')
+    #    prel_herbCode trumps all others,
+    #        then comes herbarium_code, IF (!) it isn't a word (caps and non-caps) and if it is not (!!) 'PLANT'
+    #           then comes institute
+
+
+        logging.debug(f'Now these columns: {occs.columns}')
+
+        if occs.st_barcode.isna().sum() > 0:
+        
+            logging.info('I couldn\'t standardise the barcodes of some records. This includes many records (if from GBIF) with barcode = NA')
+            na_bc = occs[occs['st_barcode'].isna()]
+            na_bc.to_csv(working_directory + prefix + 'NA_barcodes.csv', index = False, sep = ';', )
+            logging.info(f'I have saved {len(na_bc)} occurences to the file {working_directory+prefix}NA_barcodes.csv for corrections')
+
+            logging.info('I am continuing without these.')
+            occs = occs[occs['st_barcode'].notna()]
+            
+            logging.debug(f'Occs: {occs}')
+
+        # and clean up now
+        occs = occs.drop(['prel_bc', 'prel_herbCode', 'prel_code', 'prel_code_X', 'tmp_hc', 'sel_col_bc'], axis = 1)
+        occs = occs.rename(columns = {'barcode': 'orig_bc'})
+        occs = occs.rename(columns = {'st_barcode': 'barcode'})
+        
+        logging.debug(f'{occs.columns}')
+        # -----------------------------------------------------------------------
+        # COLLECTION NUMBERS
+        # keep the original colnum column
+        # split to get a purely numeric colnum, plus a prefix for any preceding characters,
+        # and sufix for trailing characters
+
+        #occs.rename(columns={'colnum': 'colnum_full'}, inplace=True)
+        #try:
+        #    occs.colnum_full = occs.colnum_full.replace('s.n.', pd.NA) # keep s.n. for later?
+        #except:
+        #    logging.info('No plain s.n. values found in the full collection number fields.')
+
+        #occs.colnum_full.replace("s. n.", pd.NA, inplace=True)
+        
+        logging.debug(f'{occs.colnum_full}')
+
+        #create prefix, extract text before the number
+        occs['prefix'] = occs.colnum_full.str.extract('^([a-zA-Z]*)')
+        ##this code deletes spaces at start or end
+        occs['prefix'] = occs['prefix'].str.strip()
+
+        #create sufix , extract text or pattern after the number
+        #you can create different regex expressions here. The point of this code is to have the extract into a single and same colum
+        #otherwise it creates different coloumns for each pattern.
+        # see here: https://toltman.medium.com/matching-multiple-regex-patterns-in-pandas-121d6127dd47
+
+        regex_list_sufix = [
+          r'(?:[a-zA-Z ]*)$', ## any charcter at the end
+          r'(?:SR_\d{1,})', ## extract 'SR_' followed by 1 to 3 digits
+          r'(?:R_\d{1,})', ## extract 'R_' followed by 1 to 3 digits
+        ]
+
+        occs['sufix'] = occs['colnum_full'].astype(str).str.extract('(' + '|'.join(regex_list_sufix) + ')')
+        occs['sufix'] = occs['sufix'].str.strip()
+
+        # extract only number (colNam)
+
+        regex_list_digits = [
+            r'(?:\d+\-\d+\-\d+)', # of structure 00-00-00
+            r'(?:\d+\-\d+)', # of structure 00-00
+            r'(?:\d+\.\d+)', # 00.00
+            r'(?:\d+)', # 00000
+        ]
+        occs['colnum']  = occs['colnum_full'].astype(str).str.extract('(' + '|'.join(regex_list_digits) + ')')
+        print(occs[['colnum_full', 'colnum']])
+
+        occs['colnum'] = occs['colnum'].str.strip()
+
+        occs['colnum'].replace('nan', pd.NA, inplace=True)
+
+        #print(occs)
+        # ok this looks good for the moment.
+        """ Still open here: TODO
+        remove collector name in prefix (partial match could take care of that)
+        """
+
+
+    # end of if/elif's
 
 
 

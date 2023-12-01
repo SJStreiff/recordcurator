@@ -164,6 +164,8 @@ if __name__ == "__main__":
         countries_new = occs.country_iso3.unique()
         logging.info(f'Countries to subset in master {countries_new}')
         MASTER_SUBSET = 'C'
+        if args.expert_file == 'SMALLEXP':
+            MASTER_SUBSET = 'N'
     except:
         # no countries in input dataset
         logging.info(f'No countries to subset, so doing entire DB crosscheck!')
@@ -275,7 +277,8 @@ if __name__ == "__main__":
         print('NA BARCODE')
         print(master_nobc[['barcode', 'orig_bc']])
         master_nobc.to_csv(mdb_dir + 'GET_RID_OF_THIS.csv', sep=';', index=False)
-        raise(Exception('THERE IS AN NaN BARCODE!!!'))
+        print(Warning('THERE IS AN NaN BARCODE!!!'))
+    masters = masters[~masters.barcode.isna()]
 
    
 #    logging.info(masters.country_iso3)
@@ -295,27 +298,30 @@ if __name__ == "__main__":
             if exp_occs.barcode.notna().all():
                 print('we have barcodes, deduplicating by BARCODE')
                 master_exp_occs = expert.deduplicate_small_experts(masters, exp_occs)
+                master_exp_occs = pd.concat([master_exp_occs, master_nobc], axis = 0)
         # alternatively, deduplicate in the traditional way,
             # by collector name, collection number, country, year,prefix and sufix
         else:
             print('no barcodes, deuduplicating by collector+number')
+            masters = pd.concat([masters, master_nobc], axis = 0)
             master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(master_db=masters, exp_dat=exp_occs)
 
+        if MASTER_SUBSET == 'C':
+            master_exp_occs = pd.concat([master_exp_occs, masters_nonCC], axis=0)
+        elif MASTER_SUBSET == 'N':
+            # exp_occs_final stays put
+            print('Master and exp already complete, not COUNTRY subset to add (no subset preformed.)')
  
         #else:
         exp_occs_1 = master_exp_occs
         # sort out indet and no_coord dat
         # reattach data not used, cleanup, sort out and save new master
+
         exp_occs_final = cleanup.clean_up_nas(exp_occs_1, args.na_value)
         exp_occs_final = exp_occs_final[z_dependencies.final_cols_for_import]
         exp_occs_final = exp_occs_final.astype(z_dependencies.final_col_for_import_type)
         exp_occs_final = cleanup.cleanup(exp_occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
   
-        if MASTER_SUBSET == 'C':
-            exp_occs_final = pd.concat([exp_occs_final, masters_nonCC], axis=0)
-        elif MASTER_SUBSET == 'N':
-            # exp_occs_final stays put
-            print('Master and exp already complete, not COUNTRY subset to add (no subset preformed.)')
 
         # INDET
         indet_to_backlog = exp_occs_final[exp_occs_final.accepted_name == args.na_value] # ==NA !!      
@@ -330,6 +336,10 @@ if __name__ == "__main__":
         logging.info('SMALLXP handling completed')
         # final data is written at end
 
+        print(sum(deduplid.accepted_name.isna()))
+  
+        
+
     ###---------------------- NORMAL DATASET INTEGRATION --------------------------------###
 
     else:
@@ -341,6 +351,7 @@ if __name__ == "__main__":
             upd_masters = occs
             upd_masters = upd_masters.astype(z_dependencies.final_col_for_import_type)
 
+        upd_masters = pd.concat([upd_masters, master_nobc], axis=0)
         # test = upd_masters[upd_masters.source_id == '<NA>']
         # logging.info(f'we have {len(test)} problems')
         upd_masters.colnum = upd_masters.colnum.replace('nan', pd.NA)
@@ -370,7 +381,10 @@ if __name__ == "__main__":
 
         occs.accepted_name = occs.accepted_name.replace('nan', None)
         occs.accepted_name = occs.accepted_name.replace('<NA>', None)
-              
+        occs.accepted_name = occs.accepted_name.replace(' ', None)              
+
+
+
         occs.ddlat = occs.ddlat.replace('0', np.nan)
         occs.ddlong = occs.ddlong.replace('0', np.nan)
         
@@ -390,13 +404,16 @@ if __name__ == "__main__":
 
         # indets
         indet_to_backlog = occs_final[occs_final.accepted_name == args.na_value] # ==NA !!
+
         occs_final = occs_final[occs_final.accepted_name != args.na_value] # NOT NA!
         # coordinates
         no_coords_to_backlog = occs_final[occs_final.ddlat == args.na_value] # ==NA !!
         deduplid = occs_final[occs_final.ddlat != args.na_value] # NOT NA!
+        print('Final size:', len(deduplid))#, 'With columns:', deduplid.columns)
+        print('Indet backlog size:', len(indet_to_backlog))
+        print('No-Coord backlog size:', len(no_coords_to_backlog))
     
 
-    
         # merge modified BL with untouched BL
         #indet_to_backlog = pd.concat([indet_to_backlog, BL_indets_non])
         # keep indet_to_backlog and send back into server

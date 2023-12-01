@@ -56,3 +56,14 @@
 # 2023-11-16:
     - huh remove country requirement, not used and problem when expert without country information
     - expert running clean without coordinates/countries
+
+# 2023-11-21:
+    - merged branch expert_determinations, new branch 'coord_consolidate: save discrepancies in coordinates between putative duplciates.
+
+
+
+
+# WISHLIST:
+    - fuzzy name check to standardise names
+    - cosnolidate coordinate discrepancies automatically
+    - postgres/SQL interaction automatically

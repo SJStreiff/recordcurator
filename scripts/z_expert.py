@@ -512,6 +512,263 @@ def exp_run_ipni(exp_data):
 
 
 
+# def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
+#     """
+#     integrate expert determinations into master database, using expert dets with only collector name and number.
+#     may include coordinate
+#     may include species name
+#          but needs at least one of these
+#     """
+
+#     #----------------------- Imperative Values. Missing is not allowed ----------------------#
+#     if exp_dat[['recorded_by', 'colnum', 'det_by', 'det_year']].isna().any().any() == True:
+
+
+#         print(exp_dat[['recorded_by', 'colnum', 'det_by', 'det_year']].isna())
+#         print('DEBUGGING:\n',
+#               'recorded_by:', sum(exp_dat.recorded_by.isna()),
+#               'colnum:', sum(exp_dat.colnum.isna()),
+#                 'det_by:', sum(exp_dat.det_by.isna()),
+#                 'det_year:', sum(exp_dat.det_year.isna()))
+#         print(exp_dat[exp_dat.colnum.isna()])
+
+
+#         # make a visible error message and raise exception (abort)
+#         print('\n#--> Something is WRONG here:\n',
+#                 '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',
+#                 exp_dat[['recorded_by', 'colnum', 'det_by', 'det_year']],
+#                 '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',
+#                 '\n I am aborting the program. Please carefully check your input data.\n',
+#                 '\n#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#\n',)
+#         raise(Exception('One of \'recorded_by\', \'colnum\', \'det_by\', or \'det_year\' is NA.\n',
+#                         'I do not allow such records as expert data....'))
+    
+
+#     if {'ddlat', 'ddlong'}.issubset(exp_dat.columns):
+#         print('Data has coordinate columns')
+#     else:
+#         exp_dat['ddlat'] = pd.NA
+#         exp_dat['ddlong'] = pd.NA
+
+
+#     # no exception, continue
+#     master_db['database_from'] = 'MASTER'
+#     # split out the s.n. records, we cannot deal with these
+#     master_sn = master_db[master_db.colnum.isnull()]
+#     master_db = master_db[~master_db.colnum.isnull()]
+
+#     # print('S.N.:\n', master_sn.shape)
+#     # print('Num.:\n', master_db.shape
+#     exp_dat['database_from'] ='EXPERT' 
+#     # concatenate
+#     occs = pd.concat([master_db, exp_dat], axis=0)
+#     occs.reset_index(drop=True, inplace=True)
+    
+#     # find duplicated surnames in prefix field and remove...
+#     occs['surnames'] = occs.recorded_by.astype(str).str.split(',').str[0]
+#     print(occs.surnames)
+#     mask = occs['prefix'] == occs['surnames']
+#     occs.loc[mask, 'prefix'] = pd.NA
+
+#     # NA etc housekeeping
+#     occs.recorded_by = occs.recorded_by.replace({'NaN': pd.NA}, regex=False)
+#     occs.recorded_by = occs.recorded_by.replace({'<NA>': pd.NA}, regex=False)
+#     occs.recorded_by = occs.recorded_by.replace({'<NA>': pd.NA}, regex=False)
+#     occs.colnum = occs.colnum.replace({'<NA>': pd.NA}, regex=False)
+#     occs.prefix = occs.prefix.replace({'<NA>': pd.NA}, regex=False)
+#     occs.sufix = occs.sufix.replace({'<NA>': pd.NA}, regex=False)
+
+#     # flag and then subset duplicated rows
+#     occs['duplicated'] = occs.duplicated(subset=['recorded_by', 'colnum', 'sufix', 'prefix'], keep=False) & occs.colnum.notnull()
+#     occs_dup = occs[occs['duplicated']]
+
+#     print(occs_dup)
+#     occs_nondup = occs[~occs.duplicated(subset=['recorded_by', 'colnum','sufix', 'prefix' ], keep=False)]
+
+#     #occs_nondup_test = occs.drop_duplicates(subset=['recorded_by', 'colnum', 'sufix', 'prefix'], keep=False)
+#     # print('Not touched:', occs_nondup_test.shape, 'compared to better?', occs_nondup.shape)
+#     # print('checking', sum(occs_nondup.duplicated(subset=['recorded_by', 'colnum','sufix', 'prefix' ], keep=False)))
+
+#     # print('BABABABAB\n',occs_dup[occs_dup.database_from == 'EXPERT'])
+
+
+#     # deduplicate the matched duplicates
+#     occs_dup = occs_dup.sort_values(['recorded_by', 'colnum', 'database_from'], ascending = [True, True, True])
+#     occs_dup.det_by = occs_dup.det_by.fillna('')    
+
+
+#     print(sum(occs_dup.colnum.isna()))
+#     # test if we have a determination, coordinates or both
+#     #print(exp_dat.accepted_name)
+
+#     if exp_dat['accepted_name'].notna().all() == True: #   .isna().any() == True:
+#         print('EXPERT WITH ACCEPTED_NAME')
+#         if exp_dat['ddlat'].notna().any():
+#             print('ACCEPTED_NAME and COORDINATES')
+#             experts_merged = occs_dup.groupby(['recorded_by', 'colnum','sufix', 'prefix'], as_index = False).agg(
+#                             scientific_name = pd.NamedAgg(column = 'scientific_name', aggfunc = 'last'),
+#                             genus = pd.NamedAgg(column = 'genus', aggfunc =  'last'),
+#                             specific_epithet = pd.NamedAgg(column = 'specific_epithet', aggfunc = 'last' ),
+#                             species_author = pd.NamedAgg(column = 'species_author', aggfunc = 'last' ),
+#                             collector_id = pd.NamedAgg(column = 'collector_id', aggfunc = 'last' ),
+#                             recorded_by = pd.NamedAgg(column = 'recorded_by', aggfunc = 'last' ),
+#                             colnum_full = pd.NamedAgg(column = 'colnum_full', aggfunc=lambda x: ', '.join(x)),
+#                             prefix = pd.NamedAgg(column = 'prefix', aggfunc = 'first' ),
+#                             colnum = pd.NamedAgg(column = 'colnum', aggfunc = 'first' ),
+#                             sufix = pd.NamedAgg(column = 'sufix', aggfunc =  'first'),
+#                             col_date = pd.NamedAgg(column = 'col_date', aggfunc = 'last' ),
+#                             col_day = pd.NamedAgg(column = 'col_day', aggfunc = 'last' ),
+#                             col_month = pd.NamedAgg(column = 'col_month', aggfunc = 'last' ),
+#                             col_year = pd.NamedAgg(column = 'col_year', aggfunc = 'last' ),
+#                             det_by = pd.NamedAgg(column = 'det_by', aggfunc = lambda x: ' / '.join(x) ),
+#                             det_date = pd.NamedAgg(column = 'det_date', aggfunc = 'first' ),
+#                             det_day = pd.NamedAgg(column = 'det_day', aggfunc = 'first' ),
+#                             det_month = pd.NamedAgg(column = 'det_month', aggfunc = 'first' ),
+#                             det_year = pd.NamedAgg(column = 'det_year', aggfunc = 'first' ),
+#                             country_iso3 = pd.NamedAgg(column = 'country_iso3', aggfunc = 'last' ),
+#                             country = pd.NamedAgg(column = 'country', aggfunc = 'last' ),
+#                             continent = pd.NamedAgg(column = 'continent', aggfunc = 'last' ),
+#                             locality = pd.NamedAgg(column = 'locality', aggfunc = 'last' ),
+#                             coordinate_id = pd.NamedAgg(column = 'coordinate_id', aggfunc = 'last' ),
+#                             ddlong = pd.NamedAgg(column = 'ddlong', aggfunc = 'first' ),
+#                             ddlat = pd.NamedAgg(column = 'ddlat', aggfunc = 'first' ),
+#                             institute = pd.NamedAgg(column = 'institute',aggfunc = 'last'),
+#                             herbarium_code = pd.NamedAgg(column = 'herbarium_code', aggfunc = 'last'),
+#                             barcode = pd.NamedAgg(column = 'barcode', aggfunc='last'), # as we have premerged all barcodes above, it doesn't matter which one we take
+#                             orig_bc = pd.NamedAgg(column = 'orig_bc',aggfunc = 'last'),
+#                             coll_surname = pd.NamedAgg(column = 'coll_surname', aggfunc = 'last'),
+#                             huh_name = pd.NamedAgg(column = 'huh_name', aggfunc = 'last'),
+#                             geo_col = pd.NamedAgg(column = 'geo_col', aggfunc = 'last'),
+#                             source_id = pd.NamedAgg(column = 'source_id',  aggfunc = 'last'),
+#                             wiki_url = pd.NamedAgg(column = 'wiki_url', aggfunc = 'last'),
+#                             expert_det = pd.NamedAgg(column = 'expert_det', aggfunc =lambda x: 'SMALLEXP'),
+#                             status = pd.NamedAgg(column = 'status',  aggfunc = 'last'),
+#                             accepted_name = pd.NamedAgg(column = 'accepted_name', aggfunc = 'first'),
+#                             ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'last'),
+#                             link =  pd.NamedAgg(column = 'link',  aggfunc = 'last'),
+#                             ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'last')
+#                             )
+#         else:
+#             print('ACCEPTED_NAME but no coordinates')
+#             experts_merged = occs_dup.groupby(['recorded_by', 'colnum','sufix', 'prefix'], as_index = False).agg(
+#                             scientific_name = pd.NamedAgg(column = 'scientific_name', aggfunc = 'last'),
+#                             genus = pd.NamedAgg(column = 'genus', aggfunc =  'last'),
+#                             specific_epithet = pd.NamedAgg(column = 'specific_epithet', aggfunc = 'last' ),
+#                             species_author = pd.NamedAgg(column = 'species_author', aggfunc = 'last' ),
+#                             collector_id = pd.NamedAgg(column = 'collector_id', aggfunc = 'last' ),
+#                             recorded_by = pd.NamedAgg(column = 'recorded_by', aggfunc = 'last' ),
+#                             colnum_full = pd.NamedAgg(column = 'colnum_full', aggfunc=lambda x: ', '.join(x)),
+#                             prefix = pd.NamedAgg(column = 'prefix', aggfunc = 'first' ),
+#                             colnum = pd.NamedAgg(column = 'colnum', aggfunc = 'first' ),
+#                             sufix = pd.NamedAgg(column = 'sufix', aggfunc =  'first'),
+#                             col_date = pd.NamedAgg(column = 'col_date', aggfunc = 'last' ),
+#                             col_day = pd.NamedAgg(column = 'col_day', aggfunc = 'last' ),
+#                             col_month = pd.NamedAgg(column = 'col_month', aggfunc = 'last' ),
+#                             col_year = pd.NamedAgg(column = 'col_year', aggfunc = 'last' ),
+#                             det_by = pd.NamedAgg(column = 'det_by', aggfunc = lambda x: ' / '.join(x) ),
+#                             det_date = pd.NamedAgg(column = 'det_date', aggfunc = 'first' ),
+#                             det_day = pd.NamedAgg(column = 'det_day', aggfunc = 'first' ),
+#                             det_month = pd.NamedAgg(column = 'det_month', aggfunc = 'first' ),
+#                             det_year = pd.NamedAgg(column = 'det_year', aggfunc = 'first' ),
+#                             country_iso3 = pd.NamedAgg(column = 'country_iso3', aggfunc = 'last' ),
+#                             country = pd.NamedAgg(column = 'country', aggfunc = 'last' ),
+#                             continent = pd.NamedAgg(column = 'continent', aggfunc = 'last' ),
+#                             locality = pd.NamedAgg(column = 'locality', aggfunc = 'last' ),
+#                             coordinate_id = pd.NamedAgg(column = 'coordinate_id', aggfunc = 'last' ),
+#                             ddlong = pd.NamedAgg(column = 'ddlong', aggfunc = 'last' ),
+#                             ddlat = pd.NamedAgg(column = 'ddlat', aggfunc = 'last' ),
+#                             institute = pd.NamedAgg(column = 'institute', aggfunc = 'last'),
+#                             herbarium_code = pd.NamedAgg(column = 'herbarium_code', aggfunc = 'last'),
+#                             barcode = pd.NamedAgg(column = 'barcode', aggfunc='last'), # as we have premerged all barcodes above, it doesn't matter which one we take
+#                             orig_bc = pd.NamedAgg(column = 'orig_bc', aggfunc = 'last'),
+#                             coll_surname = pd.NamedAgg(column = 'coll_surname', aggfunc = 'last'),
+#                             huh_name = pd.NamedAgg(column = 'huh_name', aggfunc = 'last'),
+#                             geo_col = pd.NamedAgg(column = 'geo_col', aggfunc = 'last'),
+#                             source_id = pd.NamedAgg(column = 'source_id',  aggfunc = 'last'),
+#                             wiki_url = pd.NamedAgg(column = 'wiki_url', aggfunc = 'last'),
+#                             expert_det = pd.NamedAgg(column = 'expert_det', aggfunc =lambda x: 'SMALLEXP'),
+#                             status = pd.NamedAgg(column = 'status',  aggfunc = 'last'),
+#                             accepted_name = pd.NamedAgg(column = 'accepted_name', aggfunc = 'first'),
+#                             ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'last'),
+#                             link =  pd.NamedAgg(column = 'link',  aggfunc = 'last'),
+#                             ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'last')
+#                             )
+
+#     elif exp_dat['ddlat'].notna().any():
+#         print('EXPERT WITH COORDINATES but no accepted_name')
+
+#         experts_merged = occs_dup.groupby(['recorded_by', 'colnum','sufix', 'prefix'], as_index = False).agg(
+#                         scientific_name = pd.NamedAgg(column = 'scientific_name', aggfunc = 'last'),
+#                         genus = pd.NamedAgg(column = 'genus', aggfunc =  'last'),
+#                         specific_epithet = pd.NamedAgg(column = 'specific_epithet', aggfunc = 'last' ),
+#                         species_author = pd.NamedAgg(column = 'species_author', aggfunc = 'last' ),
+#                         collector_id = pd.NamedAgg(column = 'collector_id', aggfunc = 'last' ),
+#                         recorded_by = pd.NamedAgg(column = 'recorded_by', aggfunc = 'last' ),
+#                         colnum_full = pd.NamedAgg(column = 'colnum_full', aggfunc=lambda x: ', '.join(x)),
+#                         prefix = pd.NamedAgg(column = 'prefix', aggfunc = 'first' ),
+#                         colnum = pd.NamedAgg(column = 'colnum', aggfunc = 'first' ),
+#                         sufix = pd.NamedAgg(column = 'sufix', aggfunc =  'first'),
+#                         col_date = pd.NamedAgg(column = 'col_date', aggfunc = 'last' ),
+#                         col_day = pd.NamedAgg(column = 'col_day', aggfunc = 'last' ),
+#                         col_month = pd.NamedAgg(column = 'col_month', aggfunc = 'last' ),
+#                         col_year = pd.NamedAgg(column = 'col_year', aggfunc = 'last' ),
+#                         det_by = pd.NamedAgg(column = 'det_by', aggfunc = lambda x: ' / '.join(x) ),
+#                         det_date = pd.NamedAgg(column = 'det_date', aggfunc = 'first' ),
+#                         det_day = pd.NamedAgg(column = 'det_day', aggfunc = 'first' ),
+#                         det_month = pd.NamedAgg(column = 'det_month', aggfunc = 'first' ),
+#                         det_year = pd.NamedAgg(column = 'det_year', aggfunc = 'first' ),
+#                         country_iso3 = pd.NamedAgg(column = 'country_iso3', aggfunc = 'last' ),
+#                         country = pd.NamedAgg(column = 'country', aggfunc = 'last' ),
+#                         continent = pd.NamedAgg(column = 'continent', aggfunc = 'last' ),
+#                         locality = pd.NamedAgg(column = 'locality', aggfunc = 'last' ),
+#                         coordinate_id = pd.NamedAgg(column = 'coordinate_id', aggfunc = 'last' ),
+#                         ddlong = pd.NamedAgg(column = 'ddlong', aggfunc = 'first' ),
+#                         ddlat = pd.NamedAgg(column = 'ddlat', aggfunc = 'first' ),
+#                         institute = pd.NamedAgg(column = 'institute', aggfunc = 'last'),
+#                         herbarium_code = pd.NamedAgg(column = 'herbarium_code', aggfunc =  'last'),
+#                         barcode = pd.NamedAgg(column = 'barcode', aggfunc='last'), # as we have premerged all barcodes above, it doesn't matter which one we take
+#                         orig_bc = pd.NamedAgg(column = 'orig_bc', aggfunc= 'last'),
+#                         coll_surname = pd.NamedAgg(column = 'coll_surname', aggfunc = 'last'),
+#                         huh_name = pd.NamedAgg(column = 'huh_name', aggfunc = 'last'),
+#                         geo_col = pd.NamedAgg(column = 'geo_col', aggfunc = 'last'),
+#                         source_id = pd.NamedAgg(column = 'source_id', aggfunc = 'last'),
+#                         wiki_url = pd.NamedAgg(column = 'wiki_url', aggfunc = 'last'),
+#                         expert_det = pd.NamedAgg(column = 'expert_det', aggfunc = 'last'),
+#                         status = pd.NamedAgg(column = 'status',  aggfunc = 'last'),
+#                         accepted_name = pd.NamedAgg(column = 'accepted_name', aggfunc = 'last'),
+#                         ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'last'),
+#                         link =  pd.NamedAgg(column = 'link',  aggfunc= 'last'),
+#                         ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'last')
+#                         )
+#     else:
+#         print('noting to integrate as both accepted_name and coordinates are recognised as NA!!')
+
+#     #experts_merged # is the merged data!
+#     print('merged:', experts_merged.shape)
+#     # retreive EXP data that did not match anything and return to user for 
+#     no_match = occs_nondup[occs_nondup.database_from == 'EXPERT']
+#     print('HERE?', no_match.shape)
+#     #no_match.barcode = 'EXPERT_NOBC'
+#     occs_nondup = occs_nondup[occs_nondup.database_from == 'MASTER']
+
+#     master_updated = pd.concat([occs_nondup, experts_merged, no_match])
+#     print('Double checking', len(exp_dat)+len(master_db), 'is >=', len(master_updated))
+
+#     ### do some final integration stats
+#     print('# INTEGRATION OF EXPERT DATA FINISHED\n')
+#     print('Of the', len(exp_dat), 'expert records,', len(exp_dat) - len(no_match), 'could be integrated.' )
+#     print('####################################')
+#     print('Master is of size: ', len(master_updated))
+ 
+
+#     return master_updated
+
+
+
+
+
+
+
 def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
     """
     integrate expert determinations into master database, using expert dets with only collector name and number.
@@ -544,29 +801,68 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
                         'I do not allow such records as expert data....'))
     
 
-
-
     if {'ddlat', 'ddlong'}.issubset(exp_dat.columns):
         print('Data has coordinate columns')
     else:
         exp_dat['ddlat'] = pd.NA
         exp_dat['ddlong'] = pd.NA
 
+    # HOUSEKEEPING
+    master_db['surnames'] = master_db.recorded_by.astype(str).str.split(',').str[0]
+    print(master_db.surnames)
+    mask = master_db['prefix'] == master_db['surnames']
+    master_db.loc[mask, 'prefix'] = pd.NA
 
-    # no exception, continue
-    master_db['database_from'] = 'MASTER'
+    master_db.recorded_by = master_db.recorded_by.replace({'NaN': pd.NA}, regex=False)
+    master_db.recorded_by = master_db.recorded_by.replace({'<NA>': pd.NA}, regex=False)
+    master_db.recorded_by = master_db.recorded_by.replace({'<NA>': pd.NA}, regex=False)
+    master_db.colnum = master_db.colnum.replace({'<NA>': pd.NA}, regex=False)
+    master_db.prefix = master_db.prefix.replace({'<NA>': pd.NA}, regex=False)
+    master_db.sufix = master_db.sufix.replace({'<NA>': pd.NA}, regex=False)
+
+
+    collectors = exp_dat.recorded_by.unique()
+    relevant_master = master_db[master_db.recorded_by.isin(collectors)]
+    notouch_master = master_db[~master_db.recorded_by.isin(collectors)]
+
+    # REMOVE S.N.
+    back_notouch = relevant_master[relevant_master.colnum.isna()]
+    relevant_master = relevant_master[~relevant_master.colnum.isna()]
+    notouch_master = pd.concat([notouch_master, back_notouch])
+    print(relevant_master.shape)
+    print(notouch_master.shape)
+
+    # print(len(master_db) == (len(relevant_master)+ len(notouch_master))) #nice
+    relevant_master['database_from'] = 'MASTER'
     exp_dat['database_from'] ='EXPERT' 
-    # concatenate
-    occs = pd.concat([master_db, exp_dat])
-    # find duplicates
-    occs_dup = occs[occs.duplicated(subset=['recorded_by', 'colnum','sufix', 'prefix' ], keep=False)]
-    occs_nondup = occs.drop_duplicates(subset=['recorded_by', 'colnum', 'sufix', 'prefix'], keep=False)
 
-    # deduplicate the matched duplicates
-    occs_dup = occs_dup.sort_values(['recorded_by', 'colnum', 'database_from'], ascending = [True, True, True])
 
+    occs = pd.concat([relevant_master, exp_dat], axis=0)
+    occs.reset_index(drop=True, inplace=True)
+    occs[['recorded_by', 'colnum', 'sufix', 'prefix']] = occs[['recorded_by', 'colnum', 'sufix', 'prefix']].fillna(-9999)
+    
+    print(sum(occs.duplicated(subset = ['recorded_by', 'colnum'])))
+    print(sum(occs.duplicated(subset = ['recorded_by', 'colnum', 'prefix', 'sufix'])))
+    print(sum(occs.duplicated(subset = ['recorded_by', 'colnum', 'sufix', 'prefix'])))
+
+    occs['duplicated'] = occs.duplicated(subset=['recorded_by', 'colnum', 'sufix', 'prefix'], keep=False)
+    occs_dup = occs[occs['duplicated']]
+    occs_nondup = occs[~occs.duplicated(subset=['recorded_by', 'colnum','sufix', 'prefix' ], keep=False)]
+
+    print(occs_dup.shape)
+
+    print('#-#-#- STARTING DEDUPLICATION -#-#-#-#')
+    print(sum(occs_dup.colnum.isna()))
     # test if we have a determination, coordinates or both
-    print(exp_dat.accepted_name)
+    #print(exp_dat.accepted_name)
+
+    occs_dup = occs_dup.sort_values(['recorded_by', 'colnum'], ascending = [True, True])
+
+    print(occs_dup[['source_id','recorded_by', 'colnum', 'prefix', 'sufix']])
+    print(occs_dup.columns)
+  
+
+    occs_dup.det_by = occs_dup.det_by.fillna(' ')
     if exp_dat['accepted_name'].notna().all() == True: #   .isna().any() == True:
         print('EXPERT WITH ACCEPTED_NAME')
         if exp_dat['ddlat'].notna().any():
@@ -605,7 +901,7 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
                             coll_surname = pd.NamedAgg(column = 'coll_surname', aggfunc = 'last'),
                             huh_name = pd.NamedAgg(column = 'huh_name', aggfunc = 'last'),
                             geo_col = pd.NamedAgg(column = 'geo_col', aggfunc = 'last'),
-                            source_id = pd.NamedAgg(column = 'source_id',  aggfunc = 'last'),
+                            source_id = pd.NamedAgg(column = 'source_id',  aggfunc = lambda x: ', '.join(x) ),
                             wiki_url = pd.NamedAgg(column = 'wiki_url', aggfunc = 'last'),
                             expert_det = pd.NamedAgg(column = 'expert_det', aggfunc =lambda x: 'SMALLEXP'),
                             status = pd.NamedAgg(column = 'status',  aggfunc = 'last'),
@@ -709,23 +1005,42 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
     else:
         print('noting to integrate as both accepted_name and coordinates are recognised as NA!!')
 
-    #experts_merged # is the merged data!
+    print(experts_merged.shape)
+    print(experts_merged[['source_id','recorded_by', 'colnum', 'prefix', 'sufix']])
 
+
+    #experts_merged # is the merged data!
+    print('merged:', experts_merged.shape)
     # retreive EXP data that did not match anything and return to user for 
     no_match = occs_nondup[occs_nondup.database_from == 'EXPERT']
-    no_match.barcode = 'EXPERT_NOBC'
+    print('HERE?', no_match.shape)
+    #no_match.barcode = 'EXPERT_NOBC'
     occs_nondup = occs_nondup[occs_nondup.database_from == 'MASTER']
 
     master_updated = pd.concat([occs_nondup, experts_merged, no_match])
-
+    print('Double checking', len(exp_dat)+len(relevant_master), 'is >=', len(master_updated))
 
     ### do some final integration stats
     print('# INTEGRATION OF EXPERT DATA FINISHED\n')
     print('Of the', len(exp_dat), 'expert records,', len(exp_dat) - len(no_match), 'could be integrated.' )
     print('####################################')
     print('Master is of size: ', len(master_updated))
+ 
+
+    master_updated = pd.concat([notouch_master, master_updated])
 
     return master_updated
+
+
+    # print(occs_dup)
+
+   
+
+
+
+
+
+
 
 
 
