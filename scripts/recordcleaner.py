@@ -95,14 +95,17 @@ if __name__ == "__main__":
         print('small EXpert setting')
         logging.info('#> SMALL EXPERT file. separate step')
         exp_occs = small_exp.read_expert(args.input_file)
-
+        print(exp_occs.col_year)
         logging.info('\n ................................\n')
         exp_occs_2 = huh_query.huh_wrapper(exp_occs, verbose = True, debugging = False)
+        print(exp_occs_2.col_year)
         #ipni
         exp_occs_3 = small_exp.exp_run_ipni(exp_occs_2)
-
+        print(exp_occs_3.col_year)
         print(exp_occs_3.columns)
+        
         try:
+
             print(sum(exp_occs_3.ddlat.isna()))
         except:
             print('did not find DDLAT')

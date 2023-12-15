@@ -727,8 +727,17 @@ def huh_wrapper(occs, verbose=True, debugging=False):
     occs['recby_regex'] = occs['recorded_by']
     # subset the columns of interest for querying...
     #mod_data = occs[['recorded_by', 'col_year', 'country', 'orig_recby']]
-    mod_data = occs[['recorded_by', 'col_year', 'orig_recby']]
 
+    if {'col_year'}.issubset(occs.columns):   
+        mod_data = occs[['recorded_by', 'col_year', 'orig_recby']]
+    else:
+        try:
+            print(occs.col_year)
+        except:
+            print('No col year, adding NA')
+        occs['col_year'] = pd.NA
+        mod_data = occs[['recorded_by', 'col_year', 'orig_recby']]
+    
     # drop duplicated names
     mod_data = mod_data.drop_duplicates(subset = 'recorded_by', keep='last')
     

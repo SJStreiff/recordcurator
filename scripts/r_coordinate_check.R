@@ -91,7 +91,8 @@ get_closest_coast = function(x, y){
  #                 encoding = 'UTF-8')
  # 
 
-dat <- read.csv('~/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/2_final_data/20231113_PAm_cleaned.csv', sep =';', head = T)
+dat <- read.csv('~/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/PPP_data_cleaned.csv', sep =';', head = T)
+
 #                  encoding = 'UTF-8', quote = '"')
 
 # read the csv data
@@ -198,11 +199,11 @@ if(length(flags_tt$.sea) > 0){
   # get minimum distance to coastline...
   dat_sf_tt$coast_2 <- as.numeric(get_dist(dat_sf_tt, clines))
 
-  print(paste('This many points are in the sea:', length(dat_sf_tt$scientific_name)))
+  print(paste('This many points are in the sea:', length(dat_sf_tt$accepted_name)))
   # error margin, i.e. points less than this from the coast get a new point assigned
   error_margin <- 5000
   dat_tobesaved <- dat_sf_tt[dat_sf_tt$coast_2 <= error_margin,]
-  print(paste('This many points were moved to the coastline:', length(dat_tobesaved$scientific_name),
+  print(paste('This many points were moved to the coastline:', length(dat_tobesaved$accepted_name),
               ', with the error margin of', error_margin, '[m]'))
 
   # save points closer to coast than <error_margin>
@@ -302,8 +303,8 @@ write.table(geo_issues, file = out_file, row.names = FALSE, sep=';')
 
 print(paste('Annotated coordinates are written to', out_file))
 print('#> C: Coordinate checking - complete')
-
-# write.table(geo_issues, file='~/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/Artabotrys_20231030_spatialvalid.csv',
-#             row.names = F, sep =';')
-###------------------------------------- R section done -----------------------------------------###
+# 
+# write.table(geo_issues, file='~/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/PPP_data_spatialvalid.csv',
+#              row.names = F, sep =';')
+# ###------------------------------------- R section done -----------------------------------------###
 ####################################################################################################

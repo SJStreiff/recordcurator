@@ -299,6 +299,11 @@ if __name__ == "__main__":
                 print('we have barcodes, deduplicating by BARCODE')
                 master_exp_occs = expert.deduplicate_small_experts(masters, exp_occs)
                 master_exp_occs = pd.concat([master_exp_occs, master_nobc], axis = 0)
+            else:
+                print('no useable barcodes, deuduplicating by collector+number')
+                masters = pd.concat([masters, master_nobc], axis = 0)
+                master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(master_db=masters, exp_dat=exp_occs)
+
         # alternatively, deduplicate in the traditional way,
             # by collector name, collection number, country, year,prefix and sufix
         else:

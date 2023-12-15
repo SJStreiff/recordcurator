@@ -43,6 +43,15 @@ def country_crossfill(occs, verbose=True):
     """
     occs.reset_index(drop=True)
     #logging.info(f'Let\'s see if this works {occs.country_id}')
+
+    if {'country_id'}.issubset(occs.columns):
+        print('Country id column exists')
+        logging.info('Country id column exists')
+    else:
+        occs['country_id'] = pd.NA
+        print('NEW Country id column')
+        logging.info('Country id column created NEW')
+
     try:
         occs.country = occs.country.replace('0', pd.NA)
     except:
@@ -53,10 +62,25 @@ def country_crossfill(occs, verbose=True):
         a=1
     try:
         occs['country_id'] = occs.country_id.fillna(cc.pandas_convert(series = occs.country, to='ISO2'))
+        print('FILLNA', occs.country_id)
     except:
         occs['country_id'] = cc.pandas_convert(series=occs.country, to='ISO2')
-    occs['country'] = occs.country.fillna(cc.pandas_convert(series = occs.country_id, to='name_short'))
+        print('just plain', occs.country_id)
+    try:
+        occs['country'] = occs.country.fillna(cc.pandas_convert(series = occs.country_id, to='name_short'))
+        print(occs.country)
+    except:
+        print(occs.country)
+        
     occs['country_iso3'] = cc.pandas_convert(series = occs.country, to='ISO3') # needed for later in coordinate cleaner
+    
+    # for i in occs.country_id:
+    #     print('i is:', i)
+    #     j = pd.Series(i)
+    #     debug = cc.pandas_convert(j, to='name_short')
+    #     print(debug)
+    # except:
+    #     print('blablabla')
     logging.info('Countries all filled: {occs.country}')
 
     return occs

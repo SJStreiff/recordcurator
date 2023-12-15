@@ -65,10 +65,14 @@ def read_expert(importfile, verbose=True):
 
 # det date
     exp_dat[['det_year', 'det_month', 'det_day']] = exp_dat['det_date'].str.split("/", expand=True)
-    try:
-        exp_dat[['col_year', 'col_month', 'col_day']] = exp_dat['col_date'].str.split("/", expand=True)
-    except:
-        print('no col_date found')
+    if {'col_year'}.issubset(exp_dat.columns):   
+        print('col_year already present')
+        exp_dat['col_date'] = exp_dat.col_year + '/' + exp_dat.col_month + '/' + exp_dat.col_day
+    else:
+        try:
+            exp_dat[['col_year', 'col_month', 'col_day']] = exp_dat['col_date'].str.split("/", expand=True)
+        except:
+            print('no col_date found')
 
     exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace('Collector(s):', '', regex=False)
     exp_dat['recorded_by'] = exp_dat['recorded_by'].astype(str).str.replace('Unknown', '', regex=False)
@@ -236,10 +240,16 @@ def read_expert(importfile, verbose=True):
     # ------------------------------------------------------------------------------
     print(exp_dat_newnames.recorded_by)
 
+    if {'col_year'}.issubset(exp_dat_newnames.columns):   
+        print('col_year already present')
+        print(exp_dat_newnames.col_year)
+    else:
+        exp_dat_newnames['col_year'] = pd.NA
+        print(exp_dat_newnames.col_year)
 
     exp_dat_newnames[['huh_name', 'geo_col', 'wiki_url']] = '0'
    
-    exp_dat_newnames['col_year'] = pd.NA
+    #exp_dat_newnames['col_year'] = pd.NA
 
     return exp_dat_newnames
 
@@ -506,9 +516,32 @@ def exp_run_ipni(exp_data):
         wrapper for swifter apply of above function 'expert_ipni()'
         """
         print(exp_data.columns)
-        exp_data[['ipni_species_author', 'ipni_no', 'ipni_pub']] = exp_data.swifter.apply(lambda row: expert_ipni(row['accepted_name']), axis = 1, result_type='expand')
+        exp_data['sp_idx'] = exp_data['accepted_name']
+        exp_data.set_index(exp_data.sp_idx, inplace = True)
+        occs_toquery = exp_data[['accepted_name']].astype(str).copy()
+        occs_toquery[['accepted_name']] = occs_toquery[['accepted_name']].replace('nan', pd.NA)
+    #occs_toquery[['genus', 'specific_epithet']] = occs_toquery[['genus', 'specific_epithet']].replace('None', pd.NA)
+        occs_toquery['sp_idx'] = occs_toquery['accepted_name']
+        logging.debug('The is the index and length of taxa column (contains duplicated taxon names; should be same length as input dataframe)')
+        logging.debug(f'{occs_toquery.sp_idx}')
+        logging.debug(f'{len(occs_toquery.sp_idx)}')
+        occs_toquery.set_index(occs_toquery.sp_idx, inplace = True)
 
-        return exp_data
+        occs_toquery = occs_toquery.dropna(how='all', subset=['accepted_name']) # these are really bad for the query ;-)
+    # drop duplicated genus-species combinations (callable by index in final dataframe)
+        occs_toquery = occs_toquery.drop_duplicates(subset = 'sp_idx', keep = 'last')
+        logging.info(f'Number of unique taxa to check: {len(occs_toquery.sp_idx)}')
+    # SWIFTER VERSION
+        occs_toquery[[ 'ipni_species_author', 'ipni_no', 'ipni_pub']] = occs_toquery.swifter.apply(lambda row: expert_ipni(row['accepted_name']), axis = 1, result_type='expand')
+
+ 
+        occs_toquery = occs_toquery.set_index('sp_idx')
+        occs_toquery = occs_toquery.drop(['accepted_name'], axis = 1)
+        exp_dat_out = exp_data.join(occs_toquery)
+
+        #exp_data[['ipni_species_author', 'ipni_no', 'ipni_pub']] = exp_data.swifter.apply(lambda row: expert_ipni(row['accepted_name']), axis = 1, result_type='expand')
+
+        return exp_dat_out
 
 
 
@@ -860,9 +893,12 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
 
     print(occs_dup[['source_id','recorded_by', 'colnum', 'prefix', 'sufix']])
     print(occs_dup.columns)
+    print(occs.col_year)
   
 
     occs_dup.det_by = occs_dup.det_by.fillna(' ')
+    occs_dup.geo_issues = occs_dup.geo_issues.fillna(' ')
+    occs_dup.orig_recby = occs_dup.orig_recby.fillna(' ')
     if exp_dat['accepted_name'].notna().all() == True: #   .isna().any() == True:
         print('EXPERT WITH ACCEPTED_NAME')
         if exp_dat['ddlat'].notna().any():
@@ -908,7 +944,9 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
                             accepted_name = pd.NamedAgg(column = 'accepted_name', aggfunc = 'first'),
                             ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'last'),
                             link =  pd.NamedAgg(column = 'link',  aggfunc = 'last'),
-                            ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'last')
+                            ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'last'),
+                            geo_issues = pd.NamedAgg(column = 'geo_issues',  aggfunc = lambda x: ', '.join(x) ),
+                            orig_recby = pd.NamedAgg(column = 'orig_recby',  aggfunc = lambda x: ', '.join(x) )
                             )
         else:
             print('ACCEPTED_NAME but no coordinates')
@@ -953,7 +991,9 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
                             accepted_name = pd.NamedAgg(column = 'accepted_name', aggfunc = 'first'),
                             ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'last'),
                             link =  pd.NamedAgg(column = 'link',  aggfunc = 'last'),
-                            ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'last')
+                            ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'last'),
+                            geo_issues = pd.NamedAgg(column = 'geo_issues',  aggfunc = lambda x: ', '.join(x)),
+                            orig_recby = pd.NamedAgg(column = 'orig_recby',  aggfunc = lambda x: ', '.join(x) )
                             )
 
     elif exp_dat['ddlat'].notna().any():
@@ -1000,7 +1040,9 @@ def deduplicate_small_experts_NOBARCODE(master_db, exp_dat, verbose=True):
                         accepted_name = pd.NamedAgg(column = 'accepted_name', aggfunc = 'last'),
                         ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'last'),
                         link =  pd.NamedAgg(column = 'link',  aggfunc= 'last'),
-                        ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'last')
+                        ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'last'),
+                        geo_issues = pd.NamedAgg(column = 'geo_issues',  aggfunc = lambda x: ', '.join(x)),
+                        orig_recby = pd.NamedAgg(column = 'orig_recby',  aggfunc = lambda x: ', '.join(x) )
                         )
     else:
         print('noting to integrate as both accepted_name and coordinates are recognised as NA!!')
