@@ -60,7 +60,10 @@
 # 2023-11-21:
     - merged branch expert_determinations, new branch 'coord_consolidate: save discrepancies in coordinates between putative duplciates.
 
-
+# 2024-01-16:
+    - added coordinate consolidator which cleans barcodes (needs some manual help) and then deduplicates somwhat and does reverse geocoding to check
+        coordinates-country relationship
+    
 
 
 # WISHLIST:
