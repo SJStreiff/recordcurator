@@ -32,8 +32,8 @@ import numpy as np
 #         # find all barcodes with "[A-Z]0"
 ################
 
-# occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coordinate_discrepancy.csv', sep = ';')
-occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coordinate_discrepancy.csv', sep = ';')
+occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coordinate_discrepancy.csv', sep = ';')
+# occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coordinate_discrepancy.csv', sep = ';')
 print(occs)
 
 #occs = occs.head(100)
@@ -86,8 +86,8 @@ print(barcodes.head())
 # barcodes_indiv.to_csv('/Users/serafin/Desktop/tmpAFRAS.csv', sep = ';')
 
 
-# barcodes_new = pd.read_csv('/Users/serafin/Desktop/TMP2moddedAfrAs.csv', sep = ';', index_col=0)
-barcodes_new = pd.read_csv('/Users/serafin/Desktop/TMP2modded.csv', sep = ';', index_col=0)
+barcodes_new = pd.read_csv('/Users/serafin/Desktop/TMP2moddedAfrAs.csv', sep = ';', index_col=0)
+# barcodes_new = pd.read_csv('/Users/serafin/Desktop/TMP2modded.csv', sep = ';', index_col=0)
 # sort back to index as in occs
 barcodes_new.sort_index(inplace=True)
 barcodes_new=barcodes_new.fillna('')
@@ -111,8 +111,8 @@ occs['barcode'] = barcodes_new
 print(occs.barcode)
 print(occs)
 
-occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coord_discr_cleaned_NEW.csv', sep = ';', index=False)
-# occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned.csv', sep = ';', index=False)
+# occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coord_discr_cleaned_NEW.csv', sep = ';', index=False)
+occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned_NEW.csv', sep = ';', index=False)
 # ################
 #     # # then crossfill 
 #     # return occs

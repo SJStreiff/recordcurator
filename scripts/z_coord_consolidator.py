@@ -193,39 +193,6 @@ def coord_consolidator(occs, verbose=True, debug=False):
                         '\n no Barcode records:', occs_new[occs_new.barcode == 'no_Barcode'].shape,  occs_new[occs_new.barcode.isna()].shape,
                         '\n ................................................. \n ')
 
-# deduplicate with 'normal' deduplication step
-
-# no, we have to run the 
-
-    # print('1\n')
-    # occs_s_n = occs_new[occs_new.colnum.isna()]
-    # occs_num = occs_new.dropna(how='all', subset=['colnum'])
-    # print('2\n')
-    # # deduplicate (x2)
-    # occs_num_dd = dupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
-    #                                 working_directory = working_directory, prefix = 'Integrating_', User = username, step='Master',
-    #                                 expert_file = 'NO', verbose=True, debugging=False)
-    # print('3\n')
-    # if len(occs_s_n) != 0:
-    #     occs_s_n_dd = dupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
-    #                             working_directory =  working_directory, prefix = 'Integrating_', User = username, step='Master',
-    #                             expert_file = 'NO', verbose=True, debugging=False)
-    #     print('4\n')
-    #     # recombine data 
-    #     occs_final = pd.concat([occs_s_n_dd, occs_num_dd], axis=0)
-    #     print('4\n')
-    # else:
-    #     occs_final = occs_num_dd
-    #     print('5\n')
-    # print('Total records:', len(occs_final), ' Using the same criteria as in recordcleaner step we have so many unique records:',
-    #                     '\n By recorded_by, colnum, sufix, col_year, country_iso3', occs_final.duplicated([ 'recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3' ], keep='first').sum(),
-    #                     '\n By BARCODE (!this includes NA barcodes!)', occs_final.duplicated([ 'barcode' ], keep='first').sum(),
-    #                     '\n no Barcode records:', occs_final[occs_final.barcode == 'no_Barcode'].shape,
-    #                     '\n ................................................. \n ')
-
-    # if 1==1:
-    #     return 'Banana'
-
 
     # then recheck the remaining problematic cooridinates
     has_coords = occs[occs.ddlat.notna() ]
@@ -276,8 +243,62 @@ def coord_consolidator(occs, verbose=True, debug=False):
 
 
 
-# TESTING
-occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coord_discr_cleaned_NEW.csv', sep = ';')
+######################################################################################################################################################################################################
+######################################################################################################################################################################################################
+
+def deduplicat_consolidated(occs, working_directory, username):
+    """
+    Handy wrapper for some of the data coming out of the above function
+    Needs deduplication before we can insert into master integration in *recordfiler*
+    """
+
+    # get rid of artefacts
+    print('Reading:', occs.shape)
+    occs = occs[occs.apply(pd.Series.nunique, axis=1) != 1]
+    print('After removing artefacts:', occs.shape)
+    
+
+    occs.colnum = occs.colnum.replace('nan', pd.NA)
+    occs.colnum = occs.colnum.replace('-9999', pd.NA)
+
+    occs_s_n = occs[occs.colnum.isna()]
+    occs_num = occs.dropna(how='all', subset=['colnum'])
+    
+    print(f'The numbered records being deduplicated {len(occs_num)}')
+    print(f'The s.n. records being deduplicated {len(occs_s_n)}')
+    # deduplicate (x2)
+    
+
+    occs_num_dd = dupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
+                                    working_directory = working_directory, prefix = 'Integrating_', User = username, step='Master',
+                                    expert_file = 'NO', verbose=True, debugging=False)
+    if len(occs_s_n) != 0:
+        occs_s_n_dd = dupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
+                                working_directory =  working_directory, prefix = 'Integrating_', User = username, step='Master',
+                                expert_file = 'NO', verbose=True, debugging=False)
+        # recombine data 
+        occs_out = pd.concat([occs_s_n_dd, occs_num_dd], axis=0)
+
+    else:
+        occs_out = occs_num_dd
+
+
+    print('Total records:', len(occs_out), ' Using the same criteria as in recordcleaner step',
+                        '\n By recorded_by, colnum, sufix, col_year, country_iso3', occs_out.duplicated([ 'recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3' ], keep=False).sum(),
+                        '\n By BARCODE', occs_out.duplicated([ 'barcode' ], keep=False).sum(),
+                        '\n ................................................. \n ')
+
+
+    return occs_out
+
+# with this we get a lot of data to integrate. But another lot remains with discrepancies. So check for species we need (disregard others, and then manually do it.)
+
+######################################################################################################################################################################################################
+######################################################################################################################################################################################################
+
+# RUNS
+
+occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned_NEW.csv', sep = ';')
 print(occs[occs.recorded_by == 'no_Barcode'])
 occs = occs.astype(z_dependencies.final_col_for_import_type)
 print(occs[occs.barcode == 'no_Barcode'].shape)
@@ -287,42 +308,15 @@ print('BEFORE', occs.shape)
 after_occs = coord_consolidator(occs)
 print('AFTER', after_occs.shape)
 
-after_occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coord_discr_cleaned_2.csv', sep = ';', index=False)
-out = get_cc_new(-4.238333,-55.791944)
-print(out)
+after_occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned_2.csv', sep = ';', index=False)
 
-#     return occs_cleaned, occs_prob
+# new_occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coord_discr_cleaned_2.csv', sep = ';')
+# print(new_occs)
 
+# wd = '/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/'
+# user = 'cons_dedupli'
 
+# run_occs = deduplicat_consolidated(new_occs, wd, user)
 
-
-# debug = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/recordcurator/test_data/test_coord_cons.csv', sep = ';')
-# print(debug)
-
-
-
-
- ###--- get-cc(iso2 countr
-
-
-# def prefix_cleaner(occs):
-#     """
-#     Clean prefixes to get better deduplication from master databases.
-#     """
-
-#     occs['surnames'] = occs.recorded_by.astype(str).str.split(',').str[0]
-#     print(occs.surnames)
-
-#     # housekeeping: NA
-#     occs.prefix = occs.prefix.replace('NA', pd.NA)
-#     occs.prefix = occs.prefix.replace('nan', pd.NA)
-    
-#     mask = occs['prefix'] == occs['surnames']
-#     occs.loc[mask, 'prefix'] = pd.NA
-
-#     return occs
-
-# # test = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/X_GLOBAL/master_db.csv', sep = ';')
-# # test1 = prefix_cleaner(test)
-# # print(test1)
-# # test1.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/X_GLOBAL/master_db.csv', sep = ';', index=False)
+# print(run_occs[['recorded_by', 'colnum_full', 'ddlat', 'ddlong']])
+# run_occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/2_final_data/20240118_coord_cons_out1.csv', sep = ';', index=False)
