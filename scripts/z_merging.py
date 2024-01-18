@@ -160,11 +160,69 @@ def duplicated_barcodes(master_db, new_occs, verbose=True, debugging=False):
     return new_occs
 
 
+def deduplicated_barcodes_v2(master_db, new_occs):
+    """
+    Try and speed up the barcode step massively, by exploding the barcode field into
+    a dataframe that can be deduplicated by the barcodes using the built in duplicated 
+    functions of pandas
+    """
 
-#master_db = pd.read_csv('/Users/Serafin/Sync/1_Annonaceae/share_DB_WIP/4_DB_tmp/master_db.csv', sep =';')
-#new_occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/share_DB_WIP/2_data_out/exp_debug_spatialvalid.csv' , sep = ';')
 
-#test = duplicated_barcodes(master_db=master_db, new_occs=new_occs)
+    # print('MASTER\n', master_db.barcode)
+    logging.info(f'new occs are this size {len(new_occs)}')
+    logging.info(f'MASTER are this size {len(master_db)}')
+    # first some housekeeping: remove duplicated barcodes in input i.e. [barcode1, barcode2, barcode1] becomes [barcode1, barcode2]
+
+    print(new_occs.barcode)
+    new_occs.barcode = new_occs.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated barcodes within a cell
+    # we can retain Na values as these are not dropped
+    #new_occs = new_occs[~new_occs.barcode.isna()]
+
+    new_occs = new_occs.reset_index(drop=True)
+    print(new_occs.barcode)
+
+    # explode barcodes so they are separate and can be individually checked
+    new_occs['barcode_split'] = new_occs['barcode'].str.split(', ')
+    print(new_occs.barcode_split)
+
+df['unique_id'] = df.groupby(level=0).cumcount()
+
+
+    exploded_new_occs = new_occs.explode('barcode_split')
+    print(exploded_new_occs.barcode)
+    exploded_new_occs = exploded_new_occs.reset_index(drop = True)
+    print(exploded_new_occs.barcode)
+    print(exploded_new_occs.shape)
+    print(new_occs.shape)
+
+    # now deduplicate by barcode, then remerge by unique id
+
+
+    if 1==1:
+        return 'BANANA'
+
+    # print('HERE1:\n',master_db[master_db.barcode.isna()])
+    # master_db.barcode = master_db.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated barcodes within a cell
+
+
+
+
+
+
+
+
+    # return new_master
+
+
+###############
+
+
+master_db = pd.read_csv('/Users/Serafin/Sync/1_Annonaceae/o_share_DB_WIP/4_DB_tmp/master_db.csv', sep =';')
+new_occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/o_share_DB_WIP/2_data_out/exp_debug_spatialvalid.csv' , sep = ';')
+
+# print(new_occs.barcode)
+
+test = deduplicated_barcodes_v2(master_db=master_db, new_occs=new_occs)
 
 
 
