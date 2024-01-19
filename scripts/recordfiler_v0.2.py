@@ -25,6 +25,7 @@ import numpy as np
 import datetime 
 from getpass import getpass
 import logging
+import gc
 
 
 print(os.getcwd())
@@ -350,7 +351,7 @@ if __name__ == "__main__":
     else:
         # 'normal' data handling (i.e. expert = EXP / NO)
         if len(masters) > 0:
-            upd_masters = pre_merge.check_premerge(mdb= masters, occs=occs, verbose=True)
+            upd_masters = pre_merge.check_premerge_v2(mdb= masters, occs=occs, verbose=True)
             upd_masters = upd_masters.astype(z_dependencies.final_col_for_import_type)
         else:
             upd_masters = occs
@@ -394,13 +395,15 @@ if __name__ == "__main__":
         occs.ddlong = occs.ddlong.replace('0', np.nan)
         
         # clean up and NAs
-
+        print('GARBAGE??')
+        print(gc.get_count())
+        gc.collect()
 
         occs_final = cleanup.clean_up_nas(occs, args.na_value)
 
         occs_final = occs_final[z_dependencies.final_cols_for_import]
         occs_final = occs_final.astype(z_dependencies.final_col_for_import_type)
-        occs_final = cleanup.cleanup(occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
+        occs_final = cleanup.cleanup(occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
 
         if MASTER_SUBSET == 'C':
             occs_final = pd.concat([occs_final, masters_nonCC], axis=0)
@@ -427,7 +430,8 @@ if __name__ == "__main__":
         #no_coords_to_backlog.to_csv(mdb_dir + 'coord_backlog.csv', sep=';', index=False)
 
     # END of exp_small if/else
-
+    # print('STOPPING')
+    # stop
     # BACK-UP previous files
     no_coord_bl.to_csv(mdb_dir + '/backups/coord/'+date+'_coord_backlog.csv', sep=';')
     BL_indets.to_csv(mdb_dir + '/backups/indet/'+date+'_indet_backlog.csv', sep=';')

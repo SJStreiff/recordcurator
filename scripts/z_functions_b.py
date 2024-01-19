@@ -23,7 +23,7 @@ import numpy as np
 import codecs
 import os
 import regex as re
-import swifter
+# import swifter
 import datetime 
 import logging
 
