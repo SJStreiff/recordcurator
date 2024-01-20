@@ -63,7 +63,10 @@
 # 2024-01-16:
     - added coordinate consolidator which cleans barcodes (needs some manual help) and then deduplicates somwhat and does reverse geocoding to check
         coordinates-country relationship
-    
+
+# 2024-01-19:
+    - barcode crosscheck has been sped up exponentially! (with a database of 10s of thousands of records, it takes a couple of minutes to 
+            check for duplicated barcodes, not hours!!)
 
 
 # WISHLIST:

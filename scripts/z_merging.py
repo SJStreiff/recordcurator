@@ -59,8 +59,8 @@ def deduplicated_barcodes_v2(master_db, new_occs):
     exploded_new_occs = exploded_new_occs.reset_index(drop = True)
     print(exploded_new_occs[['barcode_split', 'barcode']])
     # print(exploded_new_occs.barcode)
-    print(exploded_new_occs.shape)
-    print(new_occs.shape)
+    # print(exploded_new_occs.shape)
+    # print(new_occs.shape)
 
     # do the same with masterdb
     master_db.loc[master_db['barcode'].isna(), 'barcode'] = 'no_Barcode'
@@ -82,18 +82,18 @@ def deduplicated_barcodes_v2(master_db, new_occs):
 
     tmp_master = pd.concat([exploded_new_occs, exploded_master_db], axis=0)
 
-    print(tmp_master.columns)
-    print('Total records of exploded barcodes:', len(tmp_master), 
-          '\nUsing the same criteria as in recordcleaner step we have so many duplicated records:',
-                        '\n By individual BARCODE', tmp_master.duplicated([ 'barcode_split' ], keep='first').sum(),
-                        '\n Duplicated specimens (based on previous deduplication, not barcode):',  tmp_master.duplicated([ 'barcode' ], keep='first').sum(),
-                        '\n ................................................. *1 \n ')
+    # print(tmp_master.columns)
+    # print('Total records of exploded barcodes:', len(tmp_master), 
+    #       '\nUsing the same criteria as in recordcleaner step we have so many duplicated records:',
+    #                     '\n By individual BARCODE', tmp_master.duplicated([ 'barcode_split' ], keep='first').sum(),
+    #                     '\n Duplicated specimens (based on previous deduplication, not barcode):',  tmp_master.duplicated([ 'barcode' ], keep='first').sum(),
+    #                     '\n ................................................. *1 \n ')
    
-    # print(tmp_master[tmp_master.barcode_split == 'no_Barcode'].shape)
-    # print(tmp_master[tmp_master.barcode_split.isna()].shape)
-    # print(tmp_master.shape)
+    # # print(tmp_master[tmp_master.barcode_split == 'no_Barcode'].shape)
+    # # print(tmp_master[tmp_master.barcode_split.isna()].shape)
+    # # print(tmp_master.shape)
 
-    print('Our garbage level is at:',gc.get_count())
+    # print('Our garbage level is at:',gc.get_count())
 
     tmp_master = tmp_master.astype(z_dependencies.final_col_type)
 
@@ -152,12 +152,15 @@ def deduplicated_barcodes_v2(master_db, new_occs):
             )
 # # # go through and deduplicate by full barcodes:
 
-    print('Total records after reducind duplicated INDIVIDUAL barcodes:', len(master_bc_agg),
-           '\nUsing the same criteria as in recordcleaner step we have so many unique records:',
-                        '\n By individual BARCODE (!this includes NA barcodes!)', master_bc_agg.duplicated([ 'barcode_split' ], keep='first').sum(),
-                        '\n Duplicated specimens (based on previous deduplication, not barcode):',  master_bc_agg.duplicated([ 'barcode' ], keep='first').sum(),
-                        '\n ................................................. *2 \n ')
-    print('Our garbage level is at:',gc.get_count())
+    # print('Total records after reducind duplicated INDIVIDUAL barcodes:', len(master_bc_agg),
+    #        '\nUsing the same criteria as in recordcleaner step we have so many unique records:',
+    #                     '\n By individual BARCODE (!this includes NA barcodes!)', master_bc_agg.duplicated([ 'barcode_split' ], keep='first').sum(),
+    #                     '\n Duplicated specimens (based on previous deduplication, not barcode):',  master_bc_agg.duplicated([ 'barcode' ], keep='first').sum(),
+    #                     '\n ................................................. *2 \n ')
+    # print('Our garbage level is at:',gc.get_count())
+    master_bc_agg.barcode = master_bc_agg.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated barcodes within a cell
+
+    # print(master_bc_agg.barcode, 'Issues?')
 
     master_bc_agg = master_bc_agg.sort_values(['expert_det', 'status', 'det_year'], ascending = [True, True, False])
 
@@ -216,12 +219,15 @@ def deduplicated_barcodes_v2(master_db, new_occs):
 
     master = master.sort_values(['recorded_by', 'colnum'], ascending = [True, True])
 
-    print('After reducing all duplicated records by Barcode:', len(master), 
-          '\nUsing the same criteria as in recordcleaner step we have so many unique records:',
-                        '\n Duplicated specimens (based on previous deduplication, not barcode):',  master.duplicated([ 'barcode' ], keep='first').sum(),
-                        '\n ................................................. *3\n ')
+    # print('After reducing all duplicated records by Barcode:', len(master), 
+    #       '\nUsing the same criteria as in recordcleaner step we have so many unique records:',
+    #                     '\n Duplicated specimens (based on previous deduplication, not barcode):',  master.duplicated([ 'barcode' ], keep='first').sum(),
+    #                     '\n ................................................. *3\n ')
    
-    print('Our garbage level is at:',gc.get_count())
+    # print('Our garbage level is at:',gc.get_count())
+    # print(master.barcode, 'Issues?')
+    master.barcode = master.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated barcodes within a cell
+
     return master
 
 

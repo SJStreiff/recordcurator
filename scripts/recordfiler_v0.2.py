@@ -395,9 +395,7 @@ if __name__ == "__main__":
         occs.ddlong = occs.ddlong.replace('0', np.nan)
         
         # clean up and NAs
-        print('GARBAGE??')
-        print(gc.get_count())
-        gc.collect()
+
 
         occs_final = cleanup.clean_up_nas(occs, args.na_value)
 
