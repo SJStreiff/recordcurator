@@ -17,7 +17,7 @@ import pandas as pd
 import numpy as np
 
 import requests
-import swifter
+#import swifter
 # import logging
 import country_converter as coco
 # import reverse_geocoder as rg
@@ -54,38 +54,51 @@ def get_cc_new(ddlat, ddlong, iso_3):
     """
     try:
         out2 = geocoder.osm([ddlat, ddlong], method='reverse')
-        out_country = out2.country
-        print(out_country)
-        if out_country == 'Brasil':
-            out_country = 'Brazil'    
-        out_iso3 = cc.convert(out_country, to='ISO3')
+        # print(out2)
+        #print(out2.raw)
+        raw = out2.raw
+        print(raw['display_name'])
+        out = raw['display_name']
+        print('complete')
+        # print(out2.region)
+        # print(out2.state_district)
+        # print(out2.state)
+
+
+        # out_country = out2.country
+        # print(out_country)
+        # if out_country == 'Brasil':
+        #     out_country = 'Brazil'    
+        # out_iso3 = cc.convert(out_country, to='ISO3')
         coord_good = True
     except:
-        out_country = 'PROBLEM'
-        out_iso3 = 'Prob'
+        # out_country = 'PROBLEM'
+        # out_iso3 = 'Prob'
         coord_good = pd.NA
-
+        out = pd.NA
     # out_iso3 = cc.convert(out_country, to='ISO3')
     # check if country fits, otherwise maybe just maybe the coordinates are inverted...
-    if pd.isna(out_iso3):
-        out_iso3 = 'Probl'
-    print('HERE',iso_3)
-    if pd.isna(iso_3):
-        iso_3 = 'NA country'
-    if out_iso3 != iso_3:
-        # if the coordinate country doesn't amtch, check if coordinates are inverted ;-)
-        try:
-            out2 = geocoder.osm([ddlong, ddlat], method='reverse')
-            out_country = out2.country
-            if out_country == 'Brasil':
-                out_country = 'Brazil'    
-            out_iso3 = cc.convert(out_country, to='ISO3')
-            coord_good = False
-        except:
-            coord_good = pd.NA
-            out_iso3 = pd.NA
+    # if pd.isna(out_iso3):
+    #     out_iso3 = 'Probl'
+    # print('HERE',iso_3)
+    # if pd.isna(iso_3):
+    #     iso_3 = 'NA country'
+    # if out_iso3 != iso_3:
+    #     # if the coordinate country doesn't amtch, check if coordinates are inverted ;-)
+    #     try:
+    #         out2 = geocoder.osm([ddlong, ddlat], method='reverse')
+    #         out_country = out2.country
+    #         if out_country == 'Brasil':
+    #             out_country = 'Brazil'    
+    #         out_iso3 = cc.convert(out_country, to='ISO3')
+    #         coord_good = False
+    #     except:
+    #         coord_good = pd.NA
+    #         out_iso3 = pd.NA
 
-    return out_iso3, coord_good
+    return out
+
+
 
 
 def coord_consolidator(occs, verbose=True, debug=False):
@@ -122,9 +135,8 @@ def coord_consolidator(occs, verbose=True, debug=False):
     print(max(occs.ddlong))
 
     print(occs.dtypes)
-    ######--------#########--------######--------#########--------######--------#########--------######--------#########--------######--------#########--------#
-        # extract no_Barcode records, 
 
+    # extract no_Barcode records, 
     # clean barcode (i.e. remove white space, order all in same fashion!)
     occs['barcode'] = occs['barcode'].astype(str)
     occs['barcode'] = occs['barcode'].apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated values within a cell
@@ -153,13 +165,13 @@ def coord_consolidator(occs, verbose=True, debug=False):
                 'huh_name', 'geo_col', 'wiki_url','status', 'ipni_no', 'ipni_species_author']:
         # loop through columns
         try:
-            occs_bc.loc[occs[col] == '', col] = pd.NA
-            occs_bc.loc[occs[col] == '-9999', col] = pd.NA
-            occs_bc.loc[occs[col] == 'nan', col] = pd.NA
-            occs_bc.loc[occs[col] == 'NaN', col] = pd.NA
+            occs_bc.loc[occs_bc[col] == '', col] = pd.NA
+            occs_bc.loc[occs_bc[col] == '-9999', col] = pd.NA
+            occs_bc.loc[occs_bc[col] == 'nan', col] = pd.NA
+            occs_bc.loc[occs_bc[col] == 'NaN', col] = pd.NA
         except:
-            occs_bc.loc[occs[col] == 0, col] = pd.NA
-            occs_bc.loc[occs[col] == -9999, col] = pd.NA
+            occs_bc.loc[occs_bc[col] == 0, col] = pd.NA
+            occs_bc.loc[occs_bc[col] == -9999, col] = pd.NA
             # int column
         
 
@@ -193,17 +205,17 @@ def coord_consolidator(occs, verbose=True, debug=False):
                         '\n no Barcode records:', occs_new[occs_new.barcode == 'no_Barcode'].shape,  occs_new[occs_new.barcode.isna()].shape,
                         '\n ................................................. \n ')
 
-
- 
+    # all the records here have to have by definition at least 1 duplicate. 
+    # therefore, we replace coordinates that come with a 'geo_issue' with NA!
+    # in the hope that the other duplicate does not have a flagged problematic coordinate
+    
     # clean out accidental NA values
     occs_new.loc[occs_new['geo_issues'] == 'nan', ['geo_issues']] = pd.NA
-
 
     # print(occs_new.geo_issues)
     # print('NAs are so many:', occs_new.geo_issues.isna().sum())
     # subset the problematic rows
     issues_geo_occs = occs_new[occs_new.geo_issues.notna()]
-    occs_new = occs_new[~occs_new.geo_issues.notna()]
     
 
     #back up coordinates
@@ -213,20 +225,26 @@ def coord_consolidator(occs, verbose=True, debug=False):
     issues_geo_occs['ddlong'] = pd.NA
     issues_geo_occs['ddlat'] = pd.NA
 
-    occs_new = pd.concat([occs_new, issues_geo_occs], axis=0)
-
-
-
 
     # then recheck the remaining problematic cooridinates
-    has_coords = occs_new[occs_new.ddlat.notna() ]
-    no_coords= occs_new[occs_new.ddlat.isna() ] 
+    has_coords = occs[occs.ddlat.notna() ]
+    no_coords= occs[occs.ddlat.isna() ] 
 
-
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
     with requests.Session() as session:
-        has_coords[['cc_iso3', 'coord_good']] = has_coords.swifter.apply(lambda row: get_cc_new(row['ddlat'], row['ddlong'], row['country_iso3']), axis = 1, result_type = 'expand')
+
+        #has_coords[['cc_iso3', 'coord_good']] = has_coords.swifter.apply(lambda row: get_cc_new(row['ddlat'], row['ddlong'], row['country_iso3']), axis = 1, result_type = 'expand')
+        # testing here HEREHEREHERE        
+        bananatest= has_coords.swifter.apply(lambda row: get_cc_new(row['ddlat'], row['ddlong'], row['country_iso3']), axis = 1, result_type='reduce')
+    print(type(bananatest))
+    has_coords['gazette'] = bananatest
+    print(has_coords[['gazette', 'country_iso3', 'region', 'locality']]) 
     #print(occs.coordcountry)
     #occs['cc_iso3'] = cc.pandas_convert(series = occs.coordcountry, to='ISO3')
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+        
+
+
 
     print('2:', has_coords.shape)
     print(has_coords.columns)
@@ -262,7 +280,7 @@ def coord_consolidator(occs, verbose=True, debug=False):
                         '\n ................................................. \n ')
 
 
-    return occs_cc_checked
+    return occs
 
 
 
@@ -327,12 +345,12 @@ print(occs[occs.recorded_by == 'no_Barcode'])
 occs = occs.astype(z_dependencies.final_col_for_import_type)
 print(occs[occs.barcode == 'no_Barcode'].shape)
 
-#occs = occs.head(20)
+occs = occs.head(5)
 print('BEFORE', occs.shape)
 after_occs = coord_consolidator(occs)
 print('AFTER', after_occs.shape)
 
-after_occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned_2.csv', sep = ';', index=False)
+# after_occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned_2.csv', sep = ';', index=False)
 
 # new_occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coord_discr_cleaned_2.csv', sep = ';')
 # print(new_occs)
