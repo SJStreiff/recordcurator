@@ -194,9 +194,33 @@ def coord_consolidator(occs, verbose=True, debug=False):
                         '\n ................................................. \n ')
 
 
+ 
+    # clean out accidental NA values
+    occs_new.loc[occs_new['geo_issues'] == 'nan', ['geo_issues']] = pd.NA
+
+
+    # print(occs_new.geo_issues)
+    # print('NAs are so many:', occs_new.geo_issues.isna().sum())
+    # subset the problematic rows
+    issues_geo_occs = occs_new[occs_new.geo_issues.notna()]
+    occs_new = occs_new[~occs_new.geo_issues.notna()]
+    
+
+    #back up coordinates
+    issues_geo_occs['old_ddlat'] = issues_geo_occs.ddlat
+    issues_geo_occs['old_ddlong'] = issues_geo_occs.ddlong
+    # set coordinates as NA for later crossfill below
+    issues_geo_occs['ddlong'] = pd.NA
+    issues_geo_occs['ddlat'] = pd.NA
+
+    occs_new = pd.concat([occs_new, issues_geo_occs], axis=0)
+
+
+
+
     # then recheck the remaining problematic cooridinates
-    has_coords = occs[occs.ddlat.notna() ]
-    no_coords= occs[occs.ddlat.isna() ] 
+    has_coords = occs_new[occs_new.ddlat.notna() ]
+    no_coords= occs_new[occs_new.ddlat.isna() ] 
 
 
     with requests.Session() as session:
@@ -238,7 +262,7 @@ def coord_consolidator(occs, verbose=True, debug=False):
                         '\n ................................................. \n ')
 
 
-    return occs
+    return occs_cc_checked
 
 
 
