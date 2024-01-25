@@ -82,11 +82,11 @@ def clean_up_nas(occs, NA_target):
 
 
 # #######--- DEBUG ----##########
-debug_master = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/X_GLOBAL/master_db.csv', sep = ';')
-debug = clean_up_nas(debug_master, '-9999')
-print(debug)
+# debug_master = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/X_GLOBAL/master_db.csv', sep = ';')
+# debug = clean_up_nas(debug_master, '-9999')
+# print(debug)
 
-debug.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/X_GLOBAL/master_db.csv', sep = ';', index=False)
+# debug.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/X_GLOBAL/master_db.csv', sep = ';', index=False)
 
 # debug_2 = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_GLOBAL_distr_DB/X_GLOBAL/debug/smallexp_debug_debug.csv', sep =';', na_values='-9999')
 # #debug_2 = debug_2.fillna(pd.NA)

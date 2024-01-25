@@ -13,7 +13,7 @@ v0.2 tries to optimise the testing and deduplicating over the different backlogs
 import z_merging as pre_merge
 import z_functions_b as dupli
 import z_cleanup as cleanup
-import z_expert as expert
+import z_expert_V2 as expert
 
 import z_dependencies
 
@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
 
     # give data a (time??)stamp
-    date = date = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
+    date = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
     occs['modified'] = username + '_' + date
 
     try:
@@ -303,15 +303,17 @@ if __name__ == "__main__":
             else:
                 print('no useable barcodes, deuduplicating by collector+number')
                 masters = pd.concat([masters, master_nobc], axis = 0)
-                master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(master_db=masters, exp_dat=exp_occs)
+                master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(masters, exp_dat=exp_occs)
 
         # alternatively, deduplicate in the traditional way,
             # by collector name, collection number, country, year,prefix and sufix
         else:
             print('no barcodes, deuduplicating by collector+number')
             masters = pd.concat([masters, master_nobc], axis = 0)
-            master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(master_db=masters, exp_dat=exp_occs)
+            master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(masters, exp_dat=exp_occs)
 
+        print('THE END FOR NOW', master_exp_occs.shape, '\n', master_exp_occs)
+        stop
         if MASTER_SUBSET == 'C':
             master_exp_occs = pd.concat([master_exp_occs, masters_nonCC], axis=0)
         elif MASTER_SUBSET == 'N':

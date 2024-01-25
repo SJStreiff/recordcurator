@@ -153,13 +153,13 @@ def coord_consolidator(occs, verbose=True, debug=False):
                 'huh_name', 'geo_col', 'wiki_url','status', 'ipni_no', 'ipni_species_author']:
         # loop through columns
         try:
-            occs_bc.loc[occs[col] == '', col] = pd.NA
-            occs_bc.loc[occs[col] == '-9999', col] = pd.NA
-            occs_bc.loc[occs[col] == 'nan', col] = pd.NA
-            occs_bc.loc[occs[col] == 'NaN', col] = pd.NA
+            occs_bc.loc[occs_bc[col] == '', col] = pd.NA
+            occs_bc.loc[occs_bc[col] == '-9999', col] = pd.NA
+            occs_bc.loc[occs_bc[col] == 'nan', col] = pd.NA
+            occs_bc.loc[occs_bc[col] == 'NaN', col] = pd.NA
         except:
-            occs_bc.loc[occs[col] == 0, col] = pd.NA
-            occs_bc.loc[occs[col] == -9999, col] = pd.NA
+            occs_bc.loc[occs_bc[col] == 0, col] = pd.NA
+            occs_bc.loc[occs_bc[col] == -9999, col] = pd.NA
             # int column
         
 
@@ -322,25 +322,25 @@ def deduplicat_consolidated(occs, working_directory, username):
 
 # RUNS
 
-occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned_NEW.csv', sep = ';')
-print(occs[occs.recorded_by == 'no_Barcode'])
-occs = occs.astype(z_dependencies.final_col_for_import_type)
-print(occs[occs.barcode == 'no_Barcode'].shape)
+# occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned_NEW.csv', sep = ';')
+# print(occs[occs.recorded_by == 'no_Barcode'])
+# occs = occs.astype(z_dependencies.final_col_for_import_type)
+# print(occs[occs.barcode == 'no_Barcode'].shape)
 
-#occs = occs.head(20)
-print('BEFORE', occs.shape)
-after_occs = coord_consolidator(occs)
-print('AFTER', after_occs.shape)
+# #occs = occs.head(20)
+# print('BEFORE', occs.shape)
+# after_occs = coord_consolidator(occs)
+# print('AFTER', after_occs.shape)
 
-after_occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned_2.csv', sep = ';', index=False)
+# after_occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned_2.csv', sep = ';', index=False)
 
-# new_occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coord_discr_cleaned_2.csv', sep = ';')
-# print(new_occs)
+new_occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned_2.csv', sep = ';')
+print(new_occs)
 
-# wd = '/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/'
-# user = 'cons_dedupli'
+wd = '/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/'
+user = 'cons_dedupli'
 
-# run_occs = deduplicat_consolidated(new_occs, wd, user)
+run_occs = deduplicat_consolidated(new_occs, wd, user)
 
-# print(run_occs[['recorded_by', 'colnum_full', 'ddlat', 'ddlong']])
-# run_occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/2_final_data/20240118_coord_cons_out1.csv', sep = ';', index=False)
+print(run_occs[['recorded_by', 'colnum_full', 'ddlat', 'ddlong']])
+run_occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/20240120_coord_cons_out1.csv', sep = ';', index=False)
