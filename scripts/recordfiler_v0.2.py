@@ -292,40 +292,44 @@ if __name__ == "__main__":
         logging.info('#> SMALL EXPERT file. separate step')
 
         exp_occs = occs 
+        master_exp_occs = expert.deduplicate_small_experts(master=masters, exp_dat=exp_occs)
+        
+        # deprecated. delete when ready #
+        #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+        # # if we have a barcode, deduplicate/integrate by that. 
+        # # master_exp_occs, exceptions = expert.deduplicate_small_experts(masters, exp_occs)
+        # if {'barcode'}.issubset(exp_occs.columns):
+        #     if exp_occs.barcode.notna().all():
+        #         print('we have barcodes, deduplicating by BARCODE')
+        #         master_exp_occs = expert.deduplicate_small_experts(masters, exp_occs)
+        #         master_exp_occs = pd.concat([master_exp_occs, master_nobc], axis = 0)
+        #     else:
+        #         print('no useable barcodes, deuduplicating by collector+number')
+        #         masters = pd.concat([masters, master_nobc], axis = 0)
+        #         master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(masters, exp_dat=exp_occs)
 
-        # if we have a barcode, deduplicate/integrate by that. 
-        # master_exp_occs, exceptions = expert.deduplicate_small_experts(masters, exp_occs)
-        if {'barcode'}.issubset(exp_occs.columns):
-            if exp_occs.barcode.notna().all():
-                print('we have barcodes, deduplicating by BARCODE')
-                master_exp_occs = expert.deduplicate_small_experts(masters, exp_occs)
-                master_exp_occs = pd.concat([master_exp_occs, master_nobc], axis = 0)
-            else:
-                print('no useable barcodes, deuduplicating by collector+number')
-                masters = pd.concat([masters, master_nobc], axis = 0)
-                master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(masters, exp_dat=exp_occs)
+        # # alternatively, deduplicate in the traditional way,
+        #     # by collector name, collection number, country, year,prefix and sufix
+        # else:
+        #     print('no barcodes, deuduplicating by collector+number')
+        #     masters = pd.concat([masters, master_nobc], axis = 0)
+        #     master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(masters, exp_dat=exp_occs)
 
-        # alternatively, deduplicate in the traditional way,
-            # by collector name, collection number, country, year,prefix and sufix
-        else:
-            print('no barcodes, deuduplicating by collector+number')
-            masters = pd.concat([masters, master_nobc], axis = 0)
-            master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(masters, exp_dat=exp_occs)
-
-        print('THE END FOR NOW', master_exp_occs.shape, '\n', master_exp_occs)
-        stop
-        if MASTER_SUBSET == 'C':
-            master_exp_occs = pd.concat([master_exp_occs, masters_nonCC], axis=0)
-        elif MASTER_SUBSET == 'N':
-            # exp_occs_final stays put
-            print('Master and exp already complete, not COUNTRY subset to add (no subset preformed.)')
- 
+        # print('THE END FOR NOW', master_exp_occs.shape, '\n', master_exp_occs)
+        # stop
+        # if MASTER_SUBSET == 'C':
+        #     master_exp_occs = pd.concat([master_exp_occs, masters_nonCC], axis=0)
+        # elif MASTER_SUBSET == 'N':
+        #     # exp_occs_final stays put
+        #     print('Master and exp already complete, not COUNTRY subset to add (no subset preformed.)')
         #else:
-        exp_occs_1 = master_exp_occs
-        # sort out indet and no_coord dat
+        # exp_occs_1 = master_exp_occs
         # reattach data not used, cleanup, sort out and save new master
+        #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 
-        exp_occs_final = cleanup.clean_up_nas(exp_occs_1, args.na_value)
+
+        # sort out indet and no_coord dat
+        exp_occs_final = cleanup.clean_up_nas(master_exp_occs, args.na_value)
         exp_occs_final = exp_occs_final[z_dependencies.final_cols_for_import]
         exp_occs_final = exp_occs_final.astype(z_dependencies.final_col_for_import_type)
         exp_occs_final = cleanup.cleanup(exp_occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)

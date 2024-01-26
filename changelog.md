@@ -68,8 +68,12 @@
     - barcode crosscheck has been sped up exponentially! (with a database of 10s of thousands of records, it takes a couple of minutes to 
             check for duplicated barcodes, not hours!!)
 
+# 2024-01-26:
+    - expert issues resolved. 'exp_problem' branch
+    - exp integration polished, faster, cleaner, more reliable
 
 # WISHLIST:
+    - clean up scripts so 1 main function per file = better overview
     - fuzzy name check to standardise names
     - cosnolidate coordinate discrepancies automatically
     - postgres/SQL interaction automatically
