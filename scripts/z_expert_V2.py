@@ -353,7 +353,7 @@ def deduplicate_small_experts(master, exp_dat):
         exp_dat['barcode_split'] = exp_dat['barcode'].str.split(', ')
         exploded_new_occs = exp_dat.explode('barcode_split')
         exploded_new_occs = exploded_new_occs.reset_index(drop = True)
-        print(exploded_new_occs[['barcode_split', 'barcode']])
+        #print(exploded_new_occs[['barcode_split', 'barcode']])
 
         # MASTER
         master.loc[master['barcode'].isna(), 'barcode'] = 'no_Barcode'
@@ -468,6 +468,7 @@ def deduplicate_small_experts(master, exp_dat):
                         accepted_name = pd.NamedAgg(column = 'accepted_name', aggfunc = 'first'),
                         ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'first'),
                         ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'first'),
+                        ipni_pub =   pd.NamedAgg(column = 'ipni_pub', aggfunc = 'first'),
                         link =  pd.NamedAgg(column = 'link', aggfunc='last'),
                         orig_recby = pd.NamedAgg(column = 'orig_recby', aggfunc='last'),
                         geo_issues = pd.NamedAgg(column = 'geo_issues', aggfunc='last'),
@@ -528,6 +529,7 @@ def deduplicate_small_experts(master, exp_dat):
                     origin =  pd.NamedAgg(column = 'origin', aggfunc = 'first'),
                     ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'first'),
                     ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'first'),
+                    ipni_pub =   pd.NamedAgg(column = 'ipni_pub', aggfunc = 'first'),
                     link =  pd.NamedAgg(column = 'link',  aggfunc=lambda x: ' - '.join(x)),
                     geo_issues = pd.NamedAgg(column = 'geo_issues', aggfunc=lambda x: ', '.join(x)),
                     orig_recby = pd.NamedAgg(column = 'orig_recby', aggfunc=lambda x: ', '.join(x)),
@@ -540,7 +542,7 @@ def deduplicate_small_experts(master, exp_dat):
         master_sn  = barcodes_done[barcodes_done[['recorded_by', 'colnum']].isna().any(axis=1)]
         # here exp and master already merged
         all_data = barcodes_done[barcodes_done[['recorded_by', 'colnum']].notna().all(axis=1)]
-
+        
         
 
     else:
@@ -550,10 +552,10 @@ def deduplicate_small_experts(master, exp_dat):
 
         # merge master and exp
         all_data = pd.concat([master_num, exp_dat], axis=0)
-        print('All data', sum(all_data.duplicated(subset =  ['recorded_by', 'prefix', 'colnum', 'sufix'], keep=False)))
+        #print('All data', sum(all_data.duplicated(subset =  ['recorded_by', 'prefix', 'colnum', 'sufix'], keep=False)))
 
         #deduplicated > extract num and sn for the non-matched barcodes
-        print('here1', all_data[all_data.recorded_by.isna()])
+        #print('here1', all_data[all_data.recorded_by.isna()])
 
     # end of if/else barcodes
     # now proceed normally
@@ -571,7 +573,7 @@ def deduplicate_small_experts(master, exp_dat):
 
         to_print = masternum_sorted[masternum_sorted.duplicated(subset =  ['recorded_by', 'prefix', 'colnum', 'sufix'], keep=False)]
         print(to_print[['recorded_by', 'prefix', 'colnum', 'sufix', 'origin', 'det_year']])
-        print(to_print[to_print.recorded_by.isna()])
+        #print(to_print[to_print.recorded_by.isna()])
 
     # only numbered specimesn!!
 
@@ -591,7 +593,7 @@ def deduplicate_small_experts(master, exp_dat):
 
     # sort values most important is EXP (= origin here)
     dups_sorted = dups.sort_values(['recorded_by', 'colnum', 'origin', 'det_year'], ascending=[True, True, True, False])
-    print('HERE\n',dups_sorted[['recorded_by', 'colnum', 'det_by', 'accepted_name', 'origin']])
+    #print('HERE\n',dups_sorted[['recorded_by', 'colnum', 'det_by', 'accepted_name', 'origin']])
 
     
     if exp_dat.accepted_name.notna().all():
@@ -622,15 +624,29 @@ def deduplicate_small_experts(master, exp_dat):
 
             dups_master = dups[dups.origin == 'MASTER']
             # assign updated values to the original data
+            if len(dups_master[dups_master.duplicated(subset=['barcode'],keep='first')]) > 0:
+                except_dat = dup_additions[dup_additions.duplicated(subset=['barcode'],keep=False)]
+                except_dat.to_csv('/Users/serafin/Desktop/fixthis.csv', sep=';', index=False)
+                raise(Exception('Barcodes are duplicated where they should not be! ABORTING. PLEASE CHECK YOUR DATA'))
 
             print('the df to be mod:\n', dups_master[['recorded_by', 'det_by', 'colnum', 'accepted_name']])
-            dups_master = dups_master.assign(recorded_by = dup_additions.recorded_by,
-                                            det_by = dup_additions.det_by,
-                                            det_year = dup_additions.det_year,
-                                            accepted_name = dup_additions.accepted_name,
-                                            expert_det = dup_additions.expert_det,
-                                            ddlat = dup_additions.ddlat,
-                                            ddlong = dup_additions.ddlong)
+
+            dups_full = pd.merge(dups_master, dup_additions, on='barcode', how='outer', suffixes=('', '_exp'))
+            print('POTENTIAL ERROR SOURCE 3:\n', dups_full[dups_full.duplicated(keep='first')].shape)
+            print(dups_full.columns)
+            print(dups_full.shape)
+
+            dups_full['recorded_by'] = dups_full['recorded_by_exp'].combine_first(dups_full['recorded_by'])
+            dups_full['det_by'] = dups_full['det_by_exp'].combine_first(dups_full['det_by'])
+            dups_full['det_year'] = dups_full['det_year_exp'].combine_first(dups_full['det_year'])
+            dups_full['accepted_name'] = dups_full['accepted_name_exp'].combine_first(dups_full['accepted_name'])
+            dups_full['expert_det'] = dups_full['expert_det_exp'].combine_first(dups_full['expert_det'])
+            dups_full['ipni_no'] = dups_full['ipni_no_exp'].combine_first(dups_full['ipni_no'])
+            dups_full['status'] = dups_full['status_exp'].combine_first(dups_full['status'])
+
+
+
+            
 
         else:
             # No coordinates, just taxonomy
@@ -645,33 +661,48 @@ def deduplicate_small_experts(master, exp_dat):
                 status = pd.NamedAgg(column='status', aggfunc=lambda x: 'ACCEPTED'),
                 barcode = pd.NamedAgg(column='barcode', aggfunc='last')
             )
-            print('the insert df\n',dup_additions[['recorded_by', 'det_by', 'colnum', 'prefix', 'sufix', 'accepted_name', 'barcode']])
+            print('the insert df\n',dup_additions[['recorded_by', 'det_by', 'colnum', 'prefix', 'sufix', 'accepted_name', 'barcode']], dup_additions.shape)
            # print('PROBLEMS??????:\n',dup_additions[dup_additions.barcode.isna()][['recorded_by', 'colnum', 'det_by', 'accepted_name']])
+            print('POTENTIAL ERROR SOURCE 1:\n', dup_additions[dup_additions.duplicated(subset=['barcode'],keep='first')])
 
+            if len(dup_additions[dup_additions.duplicated(subset=['barcode'],keep='first')]) > 0:
+                # except_dat = dup_additions[~dup_additions.duplicated(subset=['barcode'],keep=False)]
+                raise(Exception('Barcodes are duplicated where they should not be! ABORTING. PLEASE CHECK YOUR DATA'))
 
             # subset original (complete data) 
             dups_master = dups[dups.origin == 'MASTER']
+            print('POTENTIAL ERROR SOURCE 2:\n', dups_master[dups_master.duplicated(subset=['barcode'],keep='first')].shape)
+            if len(dups_master[dups_master.duplicated(subset=['barcode'],keep='first')]) > 0:
+                # except_dat = dup_additions[~dup_additions.duplicated(subset=['barcode'],keep=False)]
+                raise(Exception('Barcodes are duplicated where they should not be! ABORTING. PLEASE CHECK YOUR DATA'))
+
+
             # assign updated values to the original data
-            print('the df to be mod:\n', dups_master[['recorded_by', 'det_by', 'colnum', 'prefix', 'sufix', 'accepted_name', 'barcode']])
+            print('the df to be mod:\n', dups_master[['recorded_by', 'det_by', 'colnum', 'prefix', 'sufix', 'accepted_name', 'barcode']], dups_master.shape)
 
             dups_full = pd.merge(dups_master, dup_additions, on='barcode', how='outer', suffixes=('', '_exp'))
+            print('POTENTIAL ERROR SOURCE 3:\n', dups_full[dups_full.duplicated(keep='first')].shape)
             print(dups_full.columns)
+            print(dups_full.shape)
+
 
             dups_full['recorded_by'] = dups_full['recorded_by_exp'].combine_first(dups_full['recorded_by'])
+            #print(dups_full['recorded_by'])
             dups_full['det_by'] = dups_full['det_by_exp'].combine_first(dups_full['det_by'])
+            #print(dups_full['det_by'])
             dups_full['det_year'] = dups_full['det_year_exp'].combine_first(dups_full['det_year'])
+            #print(dups_full['det_year'])
             dups_full['accepted_name'] = dups_full['accepted_name_exp'].combine_first(dups_full['accepted_name'])
+            #print(dups_full['accepted_name'])
             dups_full['expert_det'] = dups_full['expert_det_exp'].combine_first(dups_full['expert_det'])
+            #print(dups_full['expert_det'])
             dups_full['ipni_no'] = dups_full['ipni_no_exp'].combine_first(dups_full['ipni_no'])
+            #print(dups_full['ipni_no'])
             dups_full['status'] = dups_full['status_exp'].combine_first(dups_full['status'])
 
-            # dups_master = dups_master.assign(recorded_by = dup_additions.recorded_by,
-            #                                 det_by = dup_additions.det_by,
-            #                                 det_year = dup_additions.det_year,
-            #                                 accepted_name = dup_additions.accepted_name,
-            #                                 expert_det = dup_additions.expert_det
-            #                                 )
-        dups_full = dups_full.sort_values(['recorded_by', 'colnum', 'origin', 'det_year'], ascending=[True, True, True, False])
+            #print(dups_full[['recorded_by', 'colnum', 'origin', 'det_year']])
+
+            dups_full = dups_full.sort_values(['recorded_by', 'colnum', 'origin', 'det_year'], ascending=[True, True, True, False])
 
 
         print(dups_full[['recorded_by', 'colnum', 'origin', 'det_by_exp', 'det_year', 'accepted_name', 'accepted_name_exp', 'expert_det']])
@@ -732,7 +763,7 @@ def exp_run_ipni(exp_data):
         """
         wrapper for swifter apply of above function 'expert_ipni()'
         """
-        print(exp_data.columns)
+        #print(exp_data.columns)
         exp_data['sp_idx'] = exp_data['accepted_name']
         exp_data.set_index(exp_data.sp_idx, inplace = True)
         occs_toquery = exp_data[['accepted_name']].astype(str).copy()

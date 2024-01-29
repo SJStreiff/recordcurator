@@ -186,8 +186,15 @@ identified.)
 This leads to the message **Error tokenizing data.**, followed by a mention of the problematic line in the input file.  This can
 be solved by manually editing the input. Open the csv-file in a texteditor, search-and-replace \" with e.g. \'
 
-Also, make sure not to run 2 separate instances of the record-filer step simultaneously, as this might create a chaos between the
-master database files!
+* make sure not to run 2 separate instances of the record-filer step simultaneously, as this might create a chaos between the
+master database files! (N.B. this is less of an issue with the new version as it is much more rapid)
+
+* If your job is killed by the system during *recordfiler*, potentially you have duplicated barcodes in the index. These are used as
+index during some
+deduplication steps. On my system the job is stuck for a minute or two before being stopped with the message 'Killed: 9'.
+It occurs with expert data during the merge step. The exact cause is not quite clear to me as i have not been able to reliably
+reproduce it, so if this
+error does occur with your data, please let me know! 
 
 # Future updates and modifications possible
 

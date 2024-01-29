@@ -8,13 +8,18 @@ cleaning up column names, removing duplicates and making it more pleasing in gen
 Launch this script with the associated bash config file from the command line in your specified conda environment.
 '''
 
-import z_functions_a as stepA
-import HUH_query as huh_query
 import z_functions_b as stepB
 import z_nomenclature as stepC
 import z_functions_c as stepB2
 import z_expert_V2 as small_exp
 #import z_merging as stepD
+
+# import functions for pipeline
+import z_A1_colstandardiser as A1
+import z_A2_colcleaner as A2
+import z_A3_collectornames as A3
+import z_HUH_query as huh_query
+
 
 import z_dependencies
 
@@ -132,11 +137,11 @@ if __name__ == "__main__":
         logging.info('#> A1: Column standardisation')
         # Data preprocessing: Column standardisation 
         # Step A1: Standardise selection  and subset columns....
-        tmp_occs = stepA.column_standardiser(args.input_file, args.data_type, verbose = True, debugging = False) # verbose by default true
+        tmp_occs = A1.column_standardiser(args.input_file, args.data_type, verbose = True, debugging = False) # verbose by default true
         #-----------------------------------------------
         logging.info('\n#> A2: Column cleaning\n')
         # Step A2: Clean colunms and first step of standardising data (barcodes, event dates, ...)
-        tmp_occs_2 = stepA.column_cleaning(tmp_occs, args.data_type, args.working_directory, args.prefix, verbose=True, debugging=False)
+        tmp_occs_2 = A2.column_cleaning(tmp_occs, args.data_type, args.working_directory, args.prefix, verbose=True, debugging=False)
         if args.expert_file == 'EXP': # add expert flag or not
             tmp_occs_2['expert_det'] = 'expert_det_file'
         if args.expert_file == 'NO':
@@ -147,7 +152,7 @@ if __name__ == "__main__":
         # Step A3: Standardise collector names 
             # Here we check if the user wants to check the collector names, 
             # and if yes, the user can reinsert checked non-conforming names into the workflow
-        tmp_occs_3, frame_to_check = stepA.collector_names(tmp_occs_2, args.working_directory, args.prefix, verbose=False, debugging=False)
+        tmp_occs_3, frame_to_check = A3.collector_names(tmp_occs_2, args.working_directory, args.prefix, verbose=False, debugging=False)
         # should we reinsert the names we could not deal with?
 
         print('\n ................................\n',
@@ -165,7 +170,7 @@ if __name__ == "__main__":
             
             try:
                 logging.info('\n#> Reintegrating data\n')
-                tmp_occs_3 = stepA.reinsertion(tmp_occs_3, frame_to_check, reinsert, debugging=False)
+                tmp_occs_3 = A3.reinsertion(tmp_occs_3, frame_to_check, reinsert, debugging=False)
                 logging.info('Reintegration successful!')
                 
             except:

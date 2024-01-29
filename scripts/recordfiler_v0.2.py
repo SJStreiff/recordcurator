@@ -437,6 +437,8 @@ if __name__ == "__main__":
     # print('STOPPING')
     # stop
     # BACK-UP previous files
+        
+    
     no_coord_bl.to_csv(mdb_dir + '/backups/coord/'+date+'_coord_backlog.csv', sep=';')
     BL_indets.to_csv(mdb_dir + '/backups/indet/'+date+'_indet_backlog.csv', sep=';')
     m_DB.to_csv(mdb_dir + '/backups/'+date+'_master_backup.csv', sep = ';', index = False)#, mode='x')
