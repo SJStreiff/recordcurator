@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-'''This program takes your raw records and compares them to existing data if you have it,
+'''
+This program takes your raw records and compares them to existing data if you have it,
 cleaning up column names, removing duplicates and making it more pleasing in general
 
+Launch this script with the associated bash config file from the command line in your specified conda environment.
 '''
 
 import z_functions_a as stepA
@@ -11,7 +13,7 @@ import HUH_query as huh_query
 import z_functions_b as stepB
 import z_nomenclature as stepC
 import z_functions_c as stepB2
-import z_expert as small_exp
+import z_expert_V2 as small_exp
 #import z_merging as stepD
 
 import z_dependencies
@@ -62,6 +64,7 @@ if __name__ == "__main__":
                         type = str)
     args = parser.parse_args()
 
+#----------------------- Configuration output to CLI and Logfile ------------------------------------#
     print('-----------------------------------------------------------\n',
           'This is the RECORD CLEANER step of the pipeline\n',
           'Arguments supplied are:\n',
@@ -77,7 +80,6 @@ if __name__ == "__main__":
     
     logging.basicConfig(filename=args.log_file, encoding='utf-8', level=logging.DEBUG)
     logging.info('-----------------------------------------------------------\n')
-
     logging.info('This is the RECORD CLEANER step of the pipeline\n')
     logging.info('Arguments supplied are:')
     logging.info(f'INPUT FILE: {args.input_file}')
@@ -88,32 +90,27 @@ if __name__ == "__main__":
     logging.info(f' Prefix: {args.prefix}')
     logging.info(f' verbose: {args.verbose}')
     logging.info('-----------------------------------------------------------')
+#-------------------------------------------------------------------------------------------------------#
+
+
 
     ###------------------------------------------ Small expert dataset ------------------------------####
-
     if args.expert_file == 'SMALLEXP':
         print('small EXpert setting')
         logging.info('#> SMALL EXPERT file. separate step')
         exp_occs = small_exp.read_expert(args.input_file)
-        print(exp_occs.col_year)
-        logging.info('\n ................................\n')
+        logging.info('#> SMALL EXPERT file. HUH crossreference')
         exp_occs_2 = huh_query.huh_wrapper(exp_occs, verbose = True, debugging = False)
-        print(exp_occs_2.col_year)
-        #ipni
+        logging.info('#> SMALL EXPERT file. IPNI crossreference')
         exp_occs_3 = small_exp.exp_run_ipni(exp_occs_2)
-        print(exp_occs_3.col_year)
-        print(exp_occs_3.columns)
-        
-        try:
 
-            print(sum(exp_occs_3.ddlat.isna()))
-        except:
-            print('did not find DDLAT')
         if any(col in {'country', 'country_id'} for col in exp_occs_3.columns):
+            logging.info('#> SMALL EXPERT file. Coutry/coordinate check')
             exp_occs_4 = stepB2.country_crossfill(exp_occs_3, verbose=True)
             if {'ddlat', 'ddlong'}.issubset(exp_occs_3.columns):
                 exp_occs_4 = stepB2.cc_missing(exp_occs_4, verbose=True)
             else:
+                logging.info('#> SMALL EXPERT file. No coordinates in data')
                 print('No coordinates to fill in missing countries')
         else:
             exp_occs_4 = exp_occs_3
@@ -123,24 +120,27 @@ if __name__ == "__main__":
         except:
             exp_occs_4 = exp_occs_4.astype(small_exp.expert_min_types)
         exp_occs_4.to_csv(args.output_directory+args.prefix+'cleaned.csv', index=False, sep=';')
+        logging.info('#> SMALL EXPERT file FINISHED. file written to output directory.')
 
+
+#----------------------------------------------------------------------------------------------------------#
+
+    ###------------------------------------------ 'Normal' dataset -------------------------------------####
     else:
+        logging.info('#> NORMAL recordcurator')
         ###------------------------------------------ Step A -------------------------------------------####
         logging.info('#> A1: Column standardisation')
         # Data preprocessing: Column standardisation 
         # Step A1: Standardise selection  and subset columns....
         tmp_occs = stepA.column_standardiser(args.input_file, args.data_type, verbose = True, debugging = False) # verbose by default true
-        print(tmp_occs[['recorded_by','colnum','ddlat']])
         #-----------------------------------------------
         logging.info('\n#> A2: Column cleaning\n')
         # Step A2: Clean colunms and first step of standardising data (barcodes, event dates, ...)
         tmp_occs_2 = stepA.column_cleaning(tmp_occs, args.data_type, args.working_directory, args.prefix, verbose=True, debugging=False)
-        print(tmp_occs_2[['recorded_by','colnum','ddlat']])
         if args.expert_file == 'EXP': # add expert flag or not
             tmp_occs_2['expert_det'] = 'expert_det_file'
         if args.expert_file == 'NO':
             tmp_occs_2['expert_det'] = pd.NA
-        print(tmp_occs_2.barcode)
 
         #-----------------------------------------------
         logging.info('\n#> A3: Collector name processing\n')
@@ -149,7 +149,7 @@ if __name__ == "__main__":
             # and if yes, the user can reinsert checked non-conforming names into the workflow
         tmp_occs_3, frame_to_check = stepA.collector_names(tmp_occs_2, args.working_directory, args.prefix, verbose=False, debugging=False)
         # should we reinsert the names we could not deal with?
-        print(tmp_occs_3[['recorded_by','colnum','ddlat']])
+
         print('\n ................................\n',
         'Would you like to reinsert the collector names I couldn\'t handle?',
         'Please take care of encoding (usually best is UTF-8) when opening (especially in Microsoft Excel!!)',
@@ -162,8 +162,7 @@ if __name__ == "__main__":
         else:
             # check for fileending etc
             logging.info(f'reinserting the file {reinsert}')
-            #print('How is it separated? (e.g. ";" or ","...)')
-            #separ = input()
+            
             try:
                 logging.info('\n#> Reintegrating data\n')
                 tmp_occs_3 = stepA.reinsertion(tmp_occs_3, frame_to_check, reinsert, debugging=False)
@@ -172,8 +171,6 @@ if __name__ == "__main__":
             except:
                 logging.error('ERROR: I couldn\'t read the file from the path you provided. Try again.')
                 print('Integration anomalous, check log and confirm all working as expected.')
-                #tmp_occs_3 = stepA.collector_names(tmp_occs_2, args.working_directory, args.prefix, verbose=False, debugging=True)
-                # should we reinsert the names we threw out?
         logging.info('\n ................................\n')
         
         
@@ -182,20 +179,15 @@ if __name__ == "__main__":
         # For now this is not much data loss. Update as necessary.
         HERB_TO_RM = [['AAU']]
         logging.info(f'Before removing dataproblematic institutions: {tmp_occs_3.shape}')
-    #   drop_ind = tmp_occs_3[(tmp_occs_3['institute'] in ['AAU', 'AU'])].index
-        #for dropper in HERB_TO_RM:
-        #   print('dropping', dropper)
         tmp_occs_3 = tmp_occs_3[tmp_occs_3['institute'] != 'AU']
         tmp_occs_3 = tmp_occs_3[tmp_occs_3['institute'] != 'AAU']
-    #    tmp_occs_3.drop(drop_ind, inplace = True)
         logging.info(f'After removing dataproblematic institutions: {tmp_occs_3.shape}')
 
         #-----------------------------------------------
         # Step A4: Query botanist names to HUH botanists database
         # HUH name query
         logging.info('\n#> A4: HUH name query\n')
-        
-        # print('This takes a moment to initialise...')
+        print('This may take a minute to initialise the HUH crossreference')
         tmp_occs_3 = huh_query.huh_wrapper(tmp_occs_3, verbose = True, debugging = False)
         tmp_occs_3 = tmp_occs_3.reset_index(drop=True)
         logging.info('\n #> STEP A complete.\n')
@@ -263,15 +255,7 @@ if __name__ == "__main__":
         
 
         else:
-            # if args.expert_file != 'EXP':
-            #     print('Nomenclature remains unchecked!!')
-
-            #     miss_col = [i for i in z_dependencies.final_cols_for_import if i not in tmp_occs_4.columns]
-            #     tmp_occs_5[miss_col] = pd.NA
-            #     tmp_occs_5 = tmp_occs_5.astype(dtype = z_dependencies.final_col_for_import_type)
-            #     if args.verbose:
-            #         print('As you do not want to check your taxonomy (although this is strongly recommended), some columns are missing: \n',
-            #         'I will fill them with <NA>!')
+ 
             if args.expert_file == 'EXP':
                 tmp_occs_5['status'] = 'ACCEPTED'
                 miss_col = [i for i in z_dependencies.final_cols_for_import if i not in tmp_occs_4.columns]

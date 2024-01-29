@@ -280,14 +280,13 @@ def read_expert(importfile, verbose=True):
         print('No barcodes whatsoever')
         # if no barcodes, add det_by-det_year-unique-id as barcode-ersatz
         exp_dat_newnames.reset_index(inplace=True)
-        exp_dat_newnames['barcode'] = exp_dat_newnames['det_by'] + exp_dat_newnames['det_year'] + (exp_dat_newnames.index+1)
-        exp_dat_newnames['barcode'] = exp_dat_newnames['barcode'].apply(lambda x: ''.join(e for e in x if e.isalnum()))
-
+        exp_dat_newnames['bc_surname'] = exp_dat_newnames['det_by'].str.split(', ', expand=True)[0]+'_det_'
+        exp_dat_newnames['barcode'] = exp_dat_newnames['bc_surname'] + (exp_dat_newnames.groupby('bc_surname').cumcount() + 1).astype(str)
+        print(exp_dat_newnames.barcode)
 
     exp_dat_newnames[['huh_name', 'geo_col', 'wiki_url']] = '0'
 
     return exp_dat_newnames
-
 
 
 
