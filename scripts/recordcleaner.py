@@ -9,15 +9,19 @@ Launch this script with the associated bash config file from the command line in
 '''
 
 import z_functions_b as stepB
-import z_nomenclature as stepC
-import z_functions_c as stepB2
+#import z_functions_c as stepB2
 import z_expert_V2 as small_exp
 #import z_merging as stepD
 
 # import functions for pipeline
-import z_A1_colstandardiser as A1
-import z_A2_colcleaner as A2
-import z_A3_collectornames as A3
+import a1_colstandardiser as A1
+import a2_colcleaner as A2
+import a3_collectornames as A3
+import b0_country_coordinates as B0
+import b1_duplistats as B1
+import b2_deduplication as B2
+import c_nomenclature as C
+
 import z_HUH_query as huh_query
 
 
@@ -111,9 +115,9 @@ if __name__ == "__main__":
 
         if any(col in {'country', 'country_id'} for col in exp_occs_3.columns):
             logging.info('#> SMALL EXPERT file. Coutry/coordinate check')
-            exp_occs_4 = stepB2.country_crossfill(exp_occs_3, verbose=True)
+            exp_occs_4 = B0.country_crossfill(exp_occs_3, verbose=True)
             if {'ddlat', 'ddlong'}.issubset(exp_occs_3.columns):
-                exp_occs_4 = stepB2.cc_missing(exp_occs_4, verbose=True)
+                exp_occs_4 = B0.cc_missing(exp_occs_4, verbose=True)
             else:
                 logging.info('#> SMALL EXPERT file. No coordinates in data')
                 print('No coordinates to fill in missing countries')
@@ -199,8 +203,8 @@ if __name__ == "__main__":
         #-----------------------------------------------
         # Step B4: crossfill country names
         logging.info('\n#> B4: Crossfill country values\n')
-        tmp_occs_3 = stepB2.country_crossfill(tmp_occs_3, verbose=True)
-        tmp_occs_3 = stepB2.cc_missing(tmp_occs_3, verbose=True)
+        tmp_occs_3 = B0.country_crossfill(tmp_occs_3, verbose=True)
+        tmp_occs_3 = B0.cc_missing(tmp_occs_3, verbose=True)
 
 
         ###------------------------------------------ Step B -------------------------------------------####
@@ -208,7 +212,7 @@ if __name__ == "__main__":
 
         logging.info('\n#> B1: Duplication statistics etc\n')
         # Step B1: Duplication (sensitivity) statistics and separating out of << s.n. >> Collection numbers
-        tmp_colnum, tmp_s_n = stepB.duplicate_stats(tmp_occs_3, args.working_directory, args.prefix)
+        tmp_colnum, tmp_s_n = B1.duplicate_stats(tmp_occs_3, args.working_directory, args.prefix)
 
         # for records with a collection number
         dup_cols = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'] # the columns by which duplicates are identified
@@ -216,15 +220,16 @@ if __name__ == "__main__":
         #-----------------------------------------------
         logging.info('\n#> B2: Duplicates - merge duplicate records \n')
         # Step B2: deduplicate data: merge duplicate records
-        tmp_occs_4 = stepB.duplicate_cleaner(tmp_colnum, dupli = dup_cols, working_directory = args.working_directory, prefix = args.prefix, User='NA', expert_file = args.expert_file, verbose=False, debugging=False)
+        tmp_occs_4 = B2.duplicate_cleaner(tmp_colnum, dupli = dup_cols, working_directory = args.working_directory, prefix = args.prefix, User='NA', expert_file = args.expert_file, verbose=False, debugging=False)
         logging.info(f'Length of TMP 4:{len(tmp_occs_4)}')
 
         print(tmp_occs_4[['recorded_by','colnum','ddlat']])
 
         
-        # Double checking duplication stats, should show 0. (i.e. repeat B1)
+        # Double checking duplication stats, should show 0. (i.e. repeat B1
+        # no output as specified in the 'out=False' flag)
         logging.info('\n#> B2: Duplicates - stats after first merge \n')
-        stepB.duplicate_stats(tmp_occs_4, args.working_directory, args.prefix, out = False)
+        B1.duplicate_stats(tmp_occs_4, args.working_directory, args.prefix, out = False)
         #logging.info(tmp_occs_4.columns)
     
         #-----------------------------------------------
@@ -232,7 +237,7 @@ if __name__ == "__main__":
         dup_cols1 = ['recorded_by', 'col_year', 'col_month', 'col_day', 'genus', 'specific_epithet', 'country_iso3', 'locality'] # the columns by which duplicates are identified
         logging.info('\n#> B3: Duplicates - merge <s.n.> duplicate records \n')
         # Step B3: s.n. deduplicate
-        tmp_s_n_1 = stepB.duplicate_cleaner(tmp_s_n, dupli = dup_cols1, working_directory= args.working_directory, prefix= args.prefix, User='NA', expert_file= args.expert_file, verbose=False, debugging=False)
+        tmp_s_n_1 = B2.duplicate_cleaner(tmp_s_n, dupli = dup_cols1, working_directory= args.working_directory, prefix= args.prefix, User='NA', expert_file= args.expert_file, verbose=False, debugging=False)
         logging.info(f'S.N.: {len(tmp_s_n_1)}')
 
         # now recombine numbered and s.n. data
@@ -251,12 +256,8 @@ if __name__ == "__main__":
             # step C1, nomenclature check with POWO/IPNI
             print('\n.........................................\n')
             print('Checking the taxonomy now. This takes a moment!')
-            print('Do you want to do this now? [y]/[n]')
-            #goahead=input()
-            goahead = 'y'
-            if goahead == 'y':
-                tmp_occs_6 = stepC.kew_query(tmp_occs_5, args.working_directory, verbose=True)
-                # as i filter later for det or not, re-merge the data   
+            tmp_occs_6 = C.kew_query(tmp_occs_5, args.working_directory, verbose=True)
+            # as i filter later for det or not, re-merge the data   
         
 
         else:

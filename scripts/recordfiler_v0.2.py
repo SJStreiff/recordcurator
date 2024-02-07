@@ -11,6 +11,7 @@ v0.2 tries to optimise the testing and deduplicating over the different backlogs
 
 #import y_sql_functions as sql
 import z_merging as pre_merge
+import b2_deduplication as dedupli
 import z_functions_b as dupli
 import z_cleanup as cleanup
 import z_expert_V2 as expert
@@ -21,6 +22,7 @@ import z_dependencies
 
 import argparse, os, pathlib, codecs
 import pandas as pd
+import csv
 import numpy as np
 import datetime 
 from getpass import getpass
@@ -142,47 +144,38 @@ if __name__ == "__main__":
     # check input data variation: is it just one genus? just one country?
     imp = codecs.open(args.input_file,'r','utf-8') #open for reading with "universal" type set
     occs = pd.read_csv(imp, sep = ';',  dtype = z_dependencies.final_col_for_import_type, na_values=pd.NA, quotechar='"') # read the data
-    # #print(occs)
     occs = occs.fillna(pd.NA)
     logging.info('NA filled!')
     # print('\n ................................\n',
-    # 'NOTE that for the GLOBAL database you must be connected to the VPN...\n'
     print('Please type the USERNAME used to annotate changes in the records:')
     username=input() 
-    # print('\n ................................\n',
-    # 'Please type the PASSWORD used to connect to the database for user', username)
-    # password=getpass() #'n' # make back to input()
-    # print('\n ................................\n',
-    # 'Please type the PORT required to connect to the database:')
-    # port=input() #'n' # make back to input()
+        # print('\n ................................\n',
+        # 'Please type the PASSWORD used to connect to the database for user', username)
+        # password=getpass() #'n' # make back to input()
+        # print('\n ................................\n',
+        # 'Please type the PORT required to connect to the database:')
+        # port=input() #'n' # make back to input()
 
 
     # give data a (time??)stamp
     date = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
     occs['modified'] = username + '_' + date
 
-    try:
-        countries_new = occs.country_iso3.unique()
-        logging.info(f'Countries to subset in master {countries_new}')
-        MASTER_SUBSET = 'C'
-        if args.expert_file == 'SMALLEXP':
-            MASTER_SUBSET = 'N'
-    except:
-        # no countries in input dataset
-        logging.info(f'No countries to subset, so doing entire DB crosscheck!')
-        MASTER_SUBSET = 'N'
+    # To REMOVE --->
+    # try:
+    #     countries_new = occs.country_iso3.unique()
+    #     logging.info(f'Countries to subset in master {countries_new}')
+    #     MASTER_SUBSET = 'C'
+    #     if args.expert_file == 'SMALLEXP':
+    #         MASTER_SUBSET = 'N'
+    # except:
+    #     # no countries in input dataset
+    #     logging.info(f'No countries to subset, so doing entire DB crosscheck!')
+    #     MASTER_SUBSET = 'N'
+    # <----- To REMOVE
+    
 
-
-    # print(occs.country_iso3)
-    # print(occs.country_iso3)
-
-    # if just one small group, then do some sort of subsetting
-    # genus? country? ...
-
-    # IF I WANT TO UPLOAD A STARTING POINT AT SOME POINT...
-    # print('I am just going to upload the current state of the data into GLOBAL (schema: \"serafin_test\")')
-    # SQL.send_to_sql(occs ,args.database_name, args.hostname, args.tablename, args.schema)
-
+    
     if args.db_local == 'remote':
          logging.info("Trying to read remote database...")
          logging.info('Not today')
@@ -218,7 +211,7 @@ if __name__ == "__main__":
         logging.info('Reading local database')
         mdb_dir = args.database_name
 
-        BL_indets = pd.read_csv(mdb_dir+'/indet_backlog.csv', sep=';', dtype= z_dependencies.final_col_for_import_type, na_values=args.na_value)
+        BL_indets = pd.read_csv(mdb_dir+'/indet_backlog.csv', sep=';', dtype= z_dependencies.final_col_for_import_type, quotechar='"', na_values=args.na_value)
         BL_indets = BL_indets.fillna(pd.NA)
     
         # BL_indets_cc = BL_indets[BL_indets.country_iso3.isin(countries_new)]
@@ -251,26 +244,33 @@ if __name__ == "__main__":
 
     masters = pd.concat([no_coord_bl, BL_indets, m_DB])
 
+
+
     # sanity check
     if len(masters) == (len(no_coord_bl) + len(BL_indets) + len(m_DB)):
         print('Master good!')
     else:
         print('Masters not correct!')
 
-    if MASTER_SUBSET=='C':
-        # subsetting master by countries
-        logging.info('Subsetting master by countries')
-        logging.info(masters.country_iso3)
-        masters_nonCC = masters[~masters.country_iso3.isin(countries_new)]
-        masters = masters[masters.country_iso3.isin(countries_new)]
-        logging.info(f'Records that are not touched (not in same country):{len(masters_nonCC)}')
-        logging.info(f'Records that are in same country):{len(masters)}')
 
-    elif MASTER_SUBSET=='N':
-        # subsetting master by recorded_by
-        logging.info('Not subsetting master ')
+# To RM --------------->
+    # if MASTER_SUBSET=='C':
+    #     # subsetting master by countries
+    #     logging.info('Subsetting master by countries')
+    #     logging.info(masters.country_iso3)
+    #     masters_nonCC = masters[~masters.country_iso3.isin(countries_new)]
+    #     masters = masters[masters.country_iso3.isin(countries_new)]
+    #     logging.info(f'Records that are not touched (not in same country):{len(masters_nonCC)}')
+    #     logging.info(f'Records that are in same country):{len(masters)}')
+
+    # elif MASTER_SUBSET=='N':
+    #     # subsetting master by recorded_by
+    #     logging.info('Not subsetting master ')
+# <---------------- To RM
+        
+
         # masters stays masters, no recombining necessary below
-        logging.info(f'Records master being used):{len(masters)}')
+    logging.info(f'Records master being used):{len(masters)}')
 
  
     master_nobc = masters[masters.barcode.isna()]
@@ -294,40 +294,6 @@ if __name__ == "__main__":
         exp_occs = occs 
         master_exp_occs = expert.deduplicate_small_experts(master=masters, exp_dat=exp_occs)
         
-        # deprecated. delete when ready #
-        #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-        # # if we have a barcode, deduplicate/integrate by that. 
-        # # master_exp_occs, exceptions = expert.deduplicate_small_experts(masters, exp_occs)
-        # if {'barcode'}.issubset(exp_occs.columns):
-        #     if exp_occs.barcode.notna().all():
-        #         print('we have barcodes, deduplicating by BARCODE')
-        #         master_exp_occs = expert.deduplicate_small_experts(masters, exp_occs)
-        #         master_exp_occs = pd.concat([master_exp_occs, master_nobc], axis = 0)
-        #     else:
-        #         print('no useable barcodes, deuduplicating by collector+number')
-        #         masters = pd.concat([masters, master_nobc], axis = 0)
-        #         master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(masters, exp_dat=exp_occs)
-
-        # # alternatively, deduplicate in the traditional way,
-        #     # by collector name, collection number, country, year,prefix and sufix
-        # else:
-        #     print('no barcodes, deuduplicating by collector+number')
-        #     masters = pd.concat([masters, master_nobc], axis = 0)
-        #     master_exp_occs = expert.deduplicate_small_experts_NOBARCODE(masters, exp_dat=exp_occs)
-
-        # print('THE END FOR NOW', master_exp_occs.shape, '\n', master_exp_occs)
-        # stop
-        # if MASTER_SUBSET == 'C':
-        #     master_exp_occs = pd.concat([master_exp_occs, masters_nonCC], axis=0)
-        # elif MASTER_SUBSET == 'N':
-        #     # exp_occs_final stays put
-        #     print('Master and exp already complete, not COUNTRY subset to add (no subset preformed.)')
-        #else:
-        # exp_occs_1 = master_exp_occs
-        # reattach data not used, cleanup, sort out and save new master
-        #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-
-
         # sort out indet and no_coord dat
         exp_occs_final = cleanup.clean_up_nas(master_exp_occs, args.na_value)
         exp_occs_final = exp_occs_final[z_dependencies.final_cols_for_import]
@@ -359,11 +325,19 @@ if __name__ == "__main__":
         if len(masters) > 0:
             upd_masters = pre_merge.check_premerge_v2(mdb= masters, occs=occs, verbose=True)
             upd_masters = upd_masters.astype(z_dependencies.final_col_for_import_type)
+            for col in upd_masters.columns:
+                try:
+                    upd_masters[col] = upd_masters[col].replace('-9999', pd.NA)
+                except:
+                    upd_masters[col] = upd_masters[col].replace(-9999, pd.NA)
         else:
             upd_masters = occs
             upd_masters = upd_masters.astype(z_dependencies.final_col_for_import_type)
 
+ 
         upd_masters = pd.concat([upd_masters, master_nobc], axis=0)
+
+
         # test = upd_masters[upd_masters.source_id == '<NA>']
         # logging.info(f'we have {len(test)} problems')
         upd_masters.colnum = upd_masters.colnum.replace('nan', pd.NA)
@@ -375,11 +349,11 @@ if __name__ == "__main__":
         logging.info(f'The numbered records being deduplicated {len(occs_num)}')
         logging.info(f'The s.n. records being deduplicated {len(occs_s_n)}')
         # deduplicate (x2)
-        occs_num_dd = dupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
+        occs_num_dd = dedupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
                                         working_directory = args.working_directory, prefix = 'Integrating_', User = username, step='Master',
                                         expert_file = args.expert_file, verbose=True, debugging=False)
         if len(occs_s_n) != 0:
-            occs_s_n_dd = dupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
+            occs_s_n_dd = dedupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
                                     working_directory =  args.working_directory, prefix = 'Integrating_', User = username, step='Master',
                                     expert_file = args.expert_file, verbose=True, debugging=False)
             # recombine data 
@@ -407,20 +381,38 @@ if __name__ == "__main__":
 
         occs_final = occs_final[z_dependencies.final_cols_for_import]
         occs_final = occs_final.astype(z_dependencies.final_col_for_import_type)
-        occs_final = cleanup.cleanup(occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
+        occs_final = cleanup.cleanup(occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 
+                                                                'herbarium_code', 'orig_bc', 'geo_issues',
+                                                                'det_by', 'link', 'orig_recby'], verbose=True)
 
-        if MASTER_SUBSET == 'C':
-            occs_final = pd.concat([occs_final, masters_nonCC], axis=0)
-        elif MASTER_SUBSET == 'N':
-            occs_final = occs_final
+        # if MASTER_SUBSET == 'C':
+        #     occs_final = pd.concat([occs_final, masters_nonCC], axis=0)
+        # elif MASTER_SUBSET == 'N':
+        #     occs_final = occs_final
+
+        occs_final = cleanup.clean_up_nas(occs_final, args.na_value)
 
         # indets
+        # print(occs_final.loc[occs_final.status.isin(['ACCEPTED', 'SYNONYM']), 'accepted_name'])
+        # print(occs_final.status.unique())
+        # print(occs_final.loc[occs_final.status.isin(['ACCEPTED', 'SYNONYM'])].status.unique())
+
+
         indet_to_backlog = occs_final[occs_final.accepted_name == args.na_value] # ==NA !!
 
         occs_final = occs_final[occs_final.accepted_name != args.na_value] # NOT NA!
         # coordinates
-        no_coords_to_backlog = occs_final[occs_final.ddlat == args.na_value] # ==NA !!
-        deduplid = occs_final[occs_final.ddlat != args.na_value] # NOT NA!
+        no_coords_to_backlog = occs_final[occs_final.ddlat == int(args.na_value)] # ==NA !!
+        deduplid = occs_final[occs_final.ddlat != int(args.na_value)] # NOT NA!
+
+        print('Before removing duds:\n', deduplid.shape)
+        deduplid = deduplid[(deduplid.recorded_by != args.na_value) & (deduplid.colnum != args.na_value)]
+        problem_records = deduplid[(deduplid.recorded_by == args.na_value) & (deduplid.colnum == args.na_value)]
+        problem_records.to_csv(mdb_dir+'unrecoverable_problems/unrecoverable_problems.csv', index=False, sep =';', mode='a')
+        print('After removing duds:\n', deduplid.shape)
+        deduplid = deduplid[(deduplid.recorded_by.notna()) & (deduplid.colnum.notna())]
+        print('After more removing duds:\n', deduplid.shape)
+
         print('Final size:', len(deduplid))#, 'With columns:', deduplid.columns)
         print('Indet backlog size:', len(indet_to_backlog))
         print('No-Coord backlog size:', len(no_coords_to_backlog))
@@ -452,10 +444,29 @@ if __name__ == "__main__":
     print('Indet backlog size:', len(indet_to_backlog))
     print('No-Coord backlog size:', len(no_coords_to_backlog))
     # this is now the new master database...
+
+    deduplid = deduplid.reset_index(drop=True)
+    #deduplid = deduplid.replace({';':','}, regex=False)
+
+    # print(len(deduplid))
+    # for row in deduplid.iterrows(): 
+    #     print(row)
+    # stop
+    data_list = [indet_to_backlog.columns.tolist()] + indet_to_backlog.values.tolist()
+    with open(mdb_dir+'indet_backlog.csv', 'w', newline='') as file:
+        writer = csv.writer(file, escapechar='\\')
+        writer.writerows(data_list)
+    
     indet_to_backlog.to_csv(mdb_dir + 'indet_backlog.csv', sep=';', index=False)
     no_coords_to_backlog.to_csv(mdb_dir + 'coord_backlog.csv', sep=';', index=False)
+    # deduplid.to_csv(mdb_dir + 'master_db.csv', sep=';', index=False)
+    data_list = [deduplid.columns.tolist()] + deduplid.values.tolist()
+    with open(mdb_dir+'master_db.csv', 'w', newline='') as file:
+        writer = csv.writer(file, escapechar='\\')
+        writer.writerows(data_list)
     deduplid.to_csv(mdb_dir + 'master_db.csv', sep=';', index=False)
-    logging.info(f'------------------------------------------------\n#> {len(deduplid)} Records filed away into master database.\n')
+
+    #logging.info(f'------------------------------------------------\n#> {len(deduplid)} Records filed away into master database.\n')
     
 
 #################################################################################################################################################

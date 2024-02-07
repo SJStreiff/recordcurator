@@ -72,8 +72,14 @@
     - expert issues resolved. 'exp_problem' branch
     - exp integration polished, faster, cleaner, more reliable
 
+
+# 2024-02-01:
+    - cleaned functions/scripts order and names
+
+
 # WISHLIST:
     - clean up scripts so 1 main function per file = better overview
     - fuzzy name check to standardise names
-    - cosnolidate coordinate discrepancies automatically
+    - consolidate coordinate discrepancies automatically (i.e. catch values at the end of deduplication and regurgitate automatically. But some always need manual attention...)
     - postgres/SQL interaction automatically
+    - cleaner NA values before deduplication. This is not relevant for GLOBAL as we're way beyond that stage. But would be nice ot have and save a lot of manual curation. In short, implement a catchall for any type of value that might or should be NA for all the columns being used for deduplication.(As true (as in python recognised) NA values are not thought of as duplicates).

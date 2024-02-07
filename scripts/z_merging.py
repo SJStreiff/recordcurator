@@ -31,6 +31,7 @@ import gc
 #custom dependencies
 import z_dependencies
 import z_functions_b as dupli
+import z_cleanup as cleanup
 
 
 
@@ -69,12 +70,13 @@ def deduplicated_barcodes_v2(master_db, new_occs):
     # we can retain Na values as these are not dropped
     master_db = master_db.reset_index(drop=True)
 
+
     # explode barcodes so they are separate and can be individually checked
     master_db['barcode_split'] = master_db['barcode'].str.split(', ')
 
     exploded_master_db = master_db.explode('barcode_split')
     exploded_master_db = exploded_master_db.reset_index(drop = True)
-    exploded_master_db.barcode_split = exploded_master_db.barcode_split.replace('no_Barcode', pd.NA)
+    exploded_master_db.barcode_split = exploded_master_db.barcode_split.replace('no_Barcode', pd.NA) # NA not recognised as duplicated!
     # print(exploded_master_db[['barcode_split', 'barcode']])
     # # print(exploded_master_db.barcode)
     # print(exploded_master_db.shape)
@@ -144,7 +146,7 @@ def deduplicated_barcodes_v2(master_db, new_occs):
                 accepted_name = pd.NamedAgg(column = 'accepted_name', aggfunc = 'first'),
                 ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'first'),
                 ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'first'),
-                ipni_pub =   pd.NamedAgg(column = 'ipni_pub', aggfunc = 'first'),
+               # ipni_pub =   pd.NamedAgg(column = 'ipni_pub', aggfunc = 'first'),
                 link =  pd.NamedAgg(column = 'link',  aggfunc=lambda x: ' - '.join(x)),
                 orig_recby = pd.NamedAgg(column = 'orig_recby', aggfunc=lambda x: ', '.join(x)),
                 geo_issues = pd.NamedAgg(column = 'geo_issues', aggfunc=lambda x: ', '.join(x)),
@@ -210,7 +212,7 @@ def deduplicated_barcodes_v2(master_db, new_occs):
                 accepted_name = pd.NamedAgg(column = 'accepted_name', aggfunc = 'first'),
                 ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'first'),
                 ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'first'),
-                ipni_pub =   pd.NamedAgg(column = 'ipni_pub', aggfunc = 'first'),
+               # ipni_pub =   pd.NamedAgg(column = 'ipni_pub', aggfunc = 'first'),
                 link =  pd.NamedAgg(column = 'link',  aggfunc=lambda x: ' - '.join(x)),
                 geo_issues = pd.NamedAgg(column = 'geo_issues', aggfunc=lambda x: ', '.join(x)),
                 orig_recby = pd.NamedAgg(column = 'orig_recby', aggfunc=lambda x: ', '.join(x)),
@@ -255,14 +257,29 @@ def check_premerge_v2(mdb, occs, verbose=True, debugging=False):
 
     '''
 
-    # drop any rows with no barcode!
-    occs.dropna(subset= ['barcode'], inplace = True)
+    if len(occs[occs.barcode.isin(['-9999'])])>0:
+        occs.barcode = occs.barcode.replace('-9999', pd.NA)
+    if len(mdb[mdb.barcode.isin(['-9999'])])>0:
+        mdb.barcode = mdb.barcode.replace('-9999', pd.NA)
 
+    mdb = cleanup.cleanup(mdb, cols_to_clean=['source_id', 'colnum_full', 'institute', 
+                                                'herbarium_code', 'geo_issues', 'barcode',
+                                                'det_by', 'link', 'orig_recby'], verbose=True)
+
+    occs = cleanup.cleanup(occs, cols_to_clean=['source_id', 'colnum_full', 'institute', 
+                                                'herbarium_code', 'geo_issues', 'barcode',
+                                                'det_by', 'link', 'orig_recby'], verbose=True)
+
+
+    # drop any rows with no barcode!
+    #print('Issues with barcodes in NEW RECORDS:\n', occs[occs.barcode.isin(['-9999'])])
+    print('Issues with barcodes in NEW RECORDS:\n', occs[occs.barcode.isna()])
+    occs.dropna(subset= ['barcode'], inplace = True)
+    print('Issues with barcodes in MASTER:\n', mdb[mdb.barcode.isna()])
+    mdb.dropna(subset= ['barcode'], inplace = True)
 
     occs.reset_index(drop = True, inplace = True)
     mdb.reset_index(drop = True, inplace = True)
-
-
 
     logging.info(f'NEW: {occs.barcode}')
     logging.info(f'MASTER: {mdb.barcode}')

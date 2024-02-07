@@ -20,8 +20,6 @@ import pandas as pd
 
 
 
-
-
 def cleanup(occs, cols_to_clean, verbose = True, debugging = False):
     """
     occs: the dataframe to clean
@@ -34,22 +32,22 @@ def cleanup(occs, cols_to_clean, verbose = True, debugging = False):
     for col in cols_to_clean:
             if col == 'det_by':
                 logging.info('col to clean in -det_by-')
-                occs[col] = occs[col].apply(lambda x: ' / '.join(set(x.split(' / '))))    # this combines all duplicated values within a cell     
+                occs[col] = occs[col].apply(lambda x: '/ '.join(set(filter(lambda s: s.lower() != '<na>', str(x).split('/ ')))) if pd.notna(x) else pd.NA)    # this combines all duplicated values within a cell
                 occs[col] = occs[col].str.strip()
                 occs[col] = occs[col].str.strip('/') 
                 print('det_by cleaning')
 
             elif col == 'link':
                 logging.info('col to clean in -link-')
-                occs[col] = occs[col].apply(lambda x: ' - '.join(set(x.split(' - '))))    # this combines all duplicated values within a cell     
+                occs[col] = occs[col].apply(lambda x: ' - '.join(set(filter(lambda s: s.lower() != '<na>', str(x).split(' - ')))) if pd.notna(x) else pd.NA)    # this combines all duplicated values within a cell
                 occs[col] = occs[col].str.strip()
                 occs[col] = occs[col].str.strip('-') 
                 print('link cleaning')
 
             else:
                 print('cleaning', col)     
-                logging.info(f'col to clean in {col}')                  
-                occs[col] = occs[col].apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated values within a cell
+                logging.info(f'col to clean in {col}')  
+                occs[col] = occs[col].apply(lambda x: ', '.join(set(filter(lambda s: s.lower() != '<na>', str(x).split(', ')))) if pd.notna(x) else pd.NA)    # this combines all duplicated values within a cell
                 occs[col] = occs[col].str.strip()
                 occs[col] = occs[col].str.strip(',')
     return occs
@@ -60,15 +58,31 @@ def clean_up_nas(occs, NA_target):
      """"
      takes database and transforms all data to the desired NA value
      """
+
      # Replace NaN values with the chosen replacement value
      for col in occs.columns:
-            try:
-                occs[col] = occs[col].fillna(NA_target)
+        try: # find all possible delinquent values and set to NA!
+            occs.loc[occs[col] == '', col] = pd.NA
+            occs.loc[occs[col] == ' ', col] = pd.NA
+            occs.loc[occs[col] == '-9999', col] = pd.NA
+            occs.loc[occs[col] == 'nan', col] = pd.NA
+            occs.loc[occs[col] == 'None', col] = pd.NA
+            occs.loc[occs[col] == 'NaN', col] = pd.NA
+            occs.loc[occs[col] == '<NA>', col] = pd.NA
+            occs[col] = occs[col].str.strip(' ')
+            occs[col] = occs[col].str.strip('')
 
-            except:
-                occs[col] = occs[col].fillna(int(NA_target))
-     
-    #  try:      
+            occs[col] = occs[col].fillna(NA_target)
+            occs[col] = occs[col].applymap(lambda x: x.replace(';', ','))
+
+
+        except:
+            occs.loc[occs[col] == 0, col] = pd.NA
+            occs.loc[occs[col] == -9999, col] = pd.NA
+
+            occs[col] = occs[col].fillna(int(NA_target))
+
+#  try:      
     #     occs = occs.fillna(NA_target)
     #  except:
     #     occs = occs.fillna(int(NA_target))
@@ -76,6 +90,7 @@ def clean_up_nas(occs, NA_target):
      occs = occs.replace(0, int(NA_target))
      occs = occs.replace('0', NA_target)   
      occs = occs.replace('<NA>', NA_target)
+     occs
      return occs
 
 

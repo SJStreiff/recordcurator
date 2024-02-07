@@ -401,6 +401,7 @@ MO_cols = ([
 
 splink_key = {#s
     'genus': 'genus',
+    'species':'specific_epithet',
     'country': 'country',
     'stateprovince': 'region',
     'institutioncode':'institute',
@@ -422,7 +423,7 @@ splink_key = {#s
 
 splink_cols =([#'source_id',
     'genus',
-    'species',
+    'specific_epithet',
     'country',
     'locality',
     'ddlat',
@@ -443,4 +444,5 @@ splink_cols =([#'source_id',
     #'continent',
     #'coordinate_id',
     'institute',
-    'herbarium_code'])
+    'herbarium_code',
+    'barcode'])
