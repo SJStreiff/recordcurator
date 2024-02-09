@@ -346,7 +346,7 @@ def deduplicate_small_experts(master, exp_dat):
 
         # EXPERT
         # this combines all duplicated barcodes within a cell
-        exp_dat.barcode = exp_dat.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    
+        exp_dat.barcode = exp_dat.barcode.apply(lambda x: ', '.join(set(filter(lambda s: s.lower() != '<na>', str(x).split(', ')))) if pd.notna(x) else pd.NA) 
         # we can retain Na values as these are not dropped
         exp_dat = exp_dat.reset_index(drop=True)
         # explode barcodes so they are separate and can be individually checked
@@ -357,7 +357,7 @@ def deduplicate_small_experts(master, exp_dat):
 
         # MASTER
         master.loc[master['barcode'].isna(), 'barcode'] = 'no_Barcode'
-        master.barcode = master.barcode.apply(lambda x: ', '.join(set(x.split(', '))))  
+        master.barcode = master.barcode.apply(lambda x: ', '.join(set(filter(lambda s: s.lower() != '<na>', str(x).split(', ')))) if pd.notna(x) else pd.NA)  
         # we can retain Na values as these are not dropped
         master = master.reset_index(drop=True)
         # explode barcodes so they are separate and can be individually checked
@@ -468,7 +468,7 @@ def deduplicate_small_experts(master, exp_dat):
                         accepted_name = pd.NamedAgg(column = 'accepted_name', aggfunc = 'first'),
                         ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'first'),
                         ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'first'),
-                        ipni_pub =   pd.NamedAgg(column = 'ipni_pub', aggfunc = 'first'),
+                        #ipni_pub =   pd.NamedAgg(column = 'ipni_pub', aggfunc = 'first'),
                         link =  pd.NamedAgg(column = 'link', aggfunc='last'),
                         orig_recby = pd.NamedAgg(column = 'orig_recby', aggfunc='last'),
                         geo_issues = pd.NamedAgg(column = 'geo_issues', aggfunc='last'),
@@ -529,7 +529,7 @@ def deduplicate_small_experts(master, exp_dat):
                     origin =  pd.NamedAgg(column = 'origin', aggfunc = 'first'),
                     ipni_no =  pd.NamedAgg(column = 'ipni_no', aggfunc = 'first'),
                     ipni_species_author =  pd.NamedAgg(column = 'ipni_species_author', aggfunc = 'first'),
-                    ipni_pub =   pd.NamedAgg(column = 'ipni_pub', aggfunc = 'first'),
+                    #ipni_pub =   pd.NamedAgg(column = 'ipni_pub', aggfunc = 'first'),
                     link =  pd.NamedAgg(column = 'link',  aggfunc=lambda x: ' - '.join(x)),
                     geo_issues = pd.NamedAgg(column = 'geo_issues', aggfunc=lambda x: ', '.join(x)),
                     orig_recby = pd.NamedAgg(column = 'orig_recby', aggfunc=lambda x: ', '.join(x)),
@@ -611,7 +611,7 @@ def deduplicate_small_experts(master, exp_dat):
                 accepted_name = pd.NamedAgg(column='accepted_name', aggfunc='first'),
                 expert_det = pd.NamedAgg(column='det_by', aggfunc=lambda x: 'EXP'),
                 ipni_no = pd.NamedAgg(column='ipni_no', aggfunc='first'),
-                ipni_pub = pd.NamedAgg(column='ipni_pub', aggfunc='first'),
+                #ipni_pub = pd.NamedAgg(column='ipni_pub', aggfunc='first'),
                 status = pd.NamedAgg(column='status', aggfunc=lambda x: 'ACCEPTED'),
                 ddlat = pd.NamedAgg(column='ddlat', aggfunc='first'),
                 ddlong = pd.NamedAgg(column='ddlong', aggfunc='first'),
@@ -657,7 +657,7 @@ def deduplicate_small_experts(master, exp_dat):
                 accepted_name = pd.NamedAgg(column='accepted_name', aggfunc='first'),
                 expert_det = pd.NamedAgg(column='det_by', aggfunc=lambda x: 'EXP'),
                 ipni_no = pd.NamedAgg(column='ipni_no', aggfunc='first'),
-                ipni_pub = pd.NamedAgg(column='ipni_pub', aggfunc='first'),
+                #ipni_pub = pd.NamedAgg(column='ipni_pub', aggfunc='first'),
                 status = pd.NamedAgg(column='status', aggfunc=lambda x: 'ACCEPTED'),
                 barcode = pd.NamedAgg(column='barcode', aggfunc='last')
             )

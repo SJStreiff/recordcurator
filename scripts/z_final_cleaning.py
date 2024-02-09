@@ -32,60 +32,62 @@ import z_dependencies
 #         # find all barcodes with "[A-Z]0"
 ################
 
-# occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coordinate_discrepancy.csv', sep = ';')
-# # occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coordinate_discrepancy.csv', sep = ';')
-# print(occs)
+occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GDB_2/X_GLOBAL/master_db.csv', sep = ';')
+# occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coordinate_discrepancy.csv', sep = ';')
+print(occs)
 
-# #occs = occs.head(100)
+#occs = occs.head(100)
 
-# occs.loc[occs['barcode'].isna(), 'barcode'] = 'no_Barcode'
-# print(occs)
-# barcodes = occs.barcode
-# print(barcodes.head())
+occs.loc[occs['barcode'].isna(), 'barcode'] = 'no_Barcode'
+print(occs)
+barcodes = occs.barcode
+print(barcodes.head())
 
-# # # now create df of all barcodes that used to be in one cell
-# # barcodes_indiv = barcodes.str.split(', ', expand = True)
+# now create df of all barcodes that used to be in one cell
+barcodes_indiv = barcodes.str.split(', ', expand = True)
 
-# # # same for herbarium codes and Institutes
-# # herb_indiv = occs['herbarium_code'].str.split(', ', expand = True)
-# # print(herb_indiv)
-# # inst_indiv = occs['institute'].str.split(', ', expand = True)
+# same for herbarium codes and Institutes
+herb_indiv = occs['herbarium_code'].str.split(', ', expand = True)
+print(herb_indiv)
+inst_indiv = occs['institute'].str.split(', ', expand = True)
 
-# # word_regex = r'^(?:(?![A-Z][a-z]+.+$))'
-# # bad_df = pd.DataFrame()
-# # # the go through herb and institutes and replace Words with NA and Only capital letter codes
-# # for col in herb_indiv.columns:
-# #      bad = herb_indiv[col].str.contains(word_regex, regex= True)
-# #      bad = bad.fillna(True)
-# #     # change the values directly here in df[col]=''
-# #      herb_indiv.loc[bad, col] = '' 
-# #     #  bad_df[f'{col}_bad'] = bad
+word_regex = r'^(?:(?![A-Z][a-z]+.+$))'
+bad_df = pd.DataFrame()
+# the go through herb and institutes and replace Words with NA and Only capital letter codes
+for col in herb_indiv.columns:
+     bad = herb_indiv[col].str.contains(word_regex, regex= True)
+     bad = bad.fillna(True)
+    # change the values directly here in df[col]=''
+     herb_indiv.loc[bad, col] = '' 
+    #  bad_df[f'{col}_bad'] = bad
 
-# # for col in inst_indiv.columns:
-# #      bad = inst_indiv[col].str.contains(word_regex, regex= True)
-# #      bad = bad.fillna(True)
-# #     # change the values directly here in df[col]=''
-# #      inst_indiv.loc[bad, col] = '' 
-# #     #  bad_df[f'{col}_bad'] = bad
+for col in inst_indiv.columns:
+     bad = inst_indiv[col].str.contains(word_regex, regex= True)
+     bad = bad.fillna(True)
+    # change the values directly here in df[col]=''
+     inst_indiv.loc[bad, col] = '' 
+    #  bad_df[f'{col}_bad'] = bad
 
-# # herb_indiv = herb_indiv.apply(lambda row: ', '.join(map(str, row)), axis=1)
-# # herb_indiv = herb_indiv.str.strip()
-# # herb_indiv = herb_indiv.str.strip(', ')
+herb_indiv = herb_indiv.apply(lambda row: ', '.join(map(str, row)), axis=1)
+herb_indiv = herb_indiv.str.strip()
+herb_indiv = herb_indiv.str.strip(', ')
 
-# # inst_indiv = inst_indiv.apply(lambda row: ', '.join(map(str, row)), axis=1)
-# # inst_indiv = inst_indiv.str.strip()
-# # inst_indiv = inst_indiv.str.strip(', ')
-# # print(inst_indiv)
-# # # then merge back together and attach to the barcodes df
-# # barcodes_indiv['herb'] = herb_indiv
-# # barcodes_indiv['herbarium_code']  = occs['herbarium_code']
-# # barcodes_indiv['inst'] = inst_indiv
-# # barcodes_indiv['institude']  = occs['institute']
+inst_indiv = inst_indiv.apply(lambda row: ', '.join(map(str, row)), axis=1)
+inst_indiv = inst_indiv.str.strip()
+inst_indiv = inst_indiv.str.strip(', ')
+print(inst_indiv)
+# then merge back together and attach to the barcodes df
+barcodes_indiv['herb'] = herb_indiv
+barcodes_indiv['herbarium_code']  = occs['herbarium_code']
+barcodes_indiv['inst'] = inst_indiv
+barcodes_indiv['institude']  = occs['institute']
 
-# # print(barcodes_indiv)
-# # barcodes_indiv.to_csv('/Users/serafin/Desktop/tmpAFRAS.csv', sep = ';')
+print(barcodes_indiv)
+barcodes_indiv.dropna(axis=1, inplace=True)
 
+barcodes_indiv.to_csv('/Users/serafin/Desktop/tmpAm.csv', sep = ';')
 
+stop
 # barcodes_new = pd.read_csv('/Users/serafin/Desktop/TMP2moddedAfrAs.csv', sep = ';', index_col=0)
 # # barcodes_new = pd.read_csv('/Users/serafin/Desktop/TMP2modded.csv', sep = ';', index_col=0)
 # # sort back to index as in occs

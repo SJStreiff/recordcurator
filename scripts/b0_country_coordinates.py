@@ -114,7 +114,7 @@ def cc_missing(occs, verbose=True):
     if len(occs_nf) > 0:
         # if all countries good we need not bother...
         occs_good = occs[occs['country_iso3'] != 'not found']
-        occs_nf['country_id'] = occs_nf.swifter.apply(lambda row: get_cc(row['ddlat'], row['ddlong']), axis = 1, result_type = 'expand')
+        occs_nf['country_id'] = occs_nf.swifter.apply(lambda row: get_cc_new(row['ddlat'], row['ddlong']), axis = 1, result_type = 'expand')
         occs_nf['country'] = cc.pandas_convert(series = occs_nf.country_id, to='name_short')
         occs_nf['country_iso3'] = cc.pandas_convert(series = occs_nf.country, to='ISO3')
     

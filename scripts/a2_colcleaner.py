@@ -177,13 +177,17 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
         # now get the herbarium code. First if it was correct to start with, extract from barcode.
         bc = pd.Series(occs['barcode'])
         insti = pd.Series(occs['institute'])
+        contains_full_words = lambda x: pd.NA if pd.Series(x).str.contains('[a-z]').any() else x
+        insti = insti.apply(contains_full_words)
 
         prel_herbCode = occs['barcode'].str.extract(r'(^[A-Z]+\-[A-Z]+\-)') # gets most issues... ABC-DE-000000
         prel_herbCode = prel_herbCode.fillna(bc.str.extract(r'(^[A-Z]+\s[A-Z]+)')) # ABC DE00000
         prel_herbCode = prel_herbCode.fillna(bc.str.extract(r'(^[A-Z]+\-)')) # ABC-00000
         prel_herbCode = prel_herbCode.fillna(bc.str.extract(r'(^[A-Z]+)')) #ABC000
+        prel_herbCode = prel_herbCode.replace('nan', '0')
+
         # If still no luck, take the capital letters in 'Institute'
-        prel_herbCode = prel_herbCode.fillna(occs['institute'].str.extract(r'(^[A-Z]+)')) # desperately scrape whatever is in the 'institute' column if we still have no indication to where the barcode belongs
+        prel_herbCode = prel_herbCode.fillna(insti.str.extract(r'(^[A-Z]+)')) # desperately scrape whatever is in the 'institute' column if we still have no indication to where the barcode belongs
 
         occs = occs.assign(prel_herbCode = prel_herbCode)
         occs['prel_code'] = occs['barcode'].astype(str).str.extract(r'(\D+)')
@@ -230,7 +234,9 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
 
 
         logging.debug(f'Now these columns: {occs.columns}')
-
+# barcodes_new = barcodes_new.replace({'^[A-Z]+0$': 'no_Barcode'}, regex=True)
+        occs.st_barcodes = occs.st_barcodes.replace({'^[A-Z]+0$': 'no_Barcode'}, regex=True)
+        occs.loc[occs['st_barcodes'] == 'no_Barcode', 'st_barcodes'] = pd.NA 
         if occs.st_barcode.isna().sum() > 0:
         
             logging.info('I couldn\'t standardise the barcodes of some records. This includes many records (if from GBIF) with barcode = NA')

@@ -64,7 +64,7 @@ def deduplicated_barcodes_v2(master_db, new_occs):
     # print(new_occs.shape)
 
     # do the same with masterdb
-    master_db.loc[master_db['barcode'].isna(), 'barcode'] = 'no_Barcode'
+    master_db = master_db[master_db['barcode'].notna()]
 
     master_db.barcode = master_db.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated barcodes within a cell
     # we can retain Na values as these are not dropped
@@ -269,6 +269,11 @@ def check_premerge_v2(mdb, occs, verbose=True, debugging=False):
     occs = cleanup.cleanup(occs, cols_to_clean=['source_id', 'colnum_full', 'institute', 
                                                 'herbarium_code', 'geo_issues', 'barcode',
                                                 'det_by', 'link', 'orig_recby'], verbose=True)
+    # just to make sure, if there were multiple NAesque entries
+    if len(occs[occs.barcode.isin(['-9999'])])>0:
+        occs.barcode = occs.barcode.replace('-9999', pd.NA)
+    if len(mdb[mdb.barcode.isin(['-9999'])])>0:
+        mdb.barcode = mdb.barcode.replace('-9999', pd.NA)
 
 
     # drop any rows with no barcode!
