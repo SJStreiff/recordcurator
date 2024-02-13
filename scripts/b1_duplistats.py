@@ -73,7 +73,7 @@ def duplicate_stats(occs, working_directory, prefix, out=True, verbose=True, deb
     occs_colNum = occs1.dropna(how='all', subset=['colnum'])
     print('I dropped', len(occs1)-len(occs_colNum), 'NA colnum records')
     occs_nocolNum = occs1[occs1['colnum'].isna()]
-    print(occs1.colnum.dtypes, occs1['colnum'].isna())
+    # print(occs1.colnum.dtypes, occs1['colnum'].isna())
 
     occs_colNum.ddlong.astype(float)
     occs_nocolNum['ddlong'].astype(float)

@@ -273,18 +273,18 @@ def collector_names(occs, working_directory, prefix, verbose=True, debugging=Fal
 
     TC_occs1 = occs_newnames.copy()
     TC_occs1['to_check_det'] = names_WIP['det_by']
-    print('CHECK', TC_occs1.to_check_det)
+    # print('CHECK', TC_occs1.to_check_det)
 
-    print('TEST', TC_occs.colnum_full)
-    print(TC_occs.to_check)
-    print('NAs:',sum(pd.isna(TC_occs.to_check)))
+    # print('TEST', TC_occs.colnum_full)
+    # print(TC_occs.to_check)
+    # print('NAs:',sum(pd.isna(TC_occs.to_check)))
     try:
         TC_occs1['to_check_det'] = TC_occs1['to_check_det'].str.replace('NaN', pd.NA)
     #     print('THIS TIME IT WORKED')
     except:
         logging.debug(f'TC_occs no NA transformation possible')
 
-    print('det NAs:',sum(pd.isna(TC_occs1.to_check_det)))
+    # print('det NAs:',sum(pd.isna(TC_occs1.to_check_det)))
     # ###
 
 
@@ -314,19 +314,19 @@ def collector_names(occs, working_directory, prefix, verbose=True, debugging=Fal
 
     #leave just problematic names (drop NA)
     TC_occs.dropna(subset= ['to_check'], inplace = True)
-    print('HERE 1', TC_occs.to_check)
+    # print('HERE 1', TC_occs.to_check)
     TC_occs.det_by = occs_newnames.det_by
 
-    print(TC_occs1.to_check_det)
+    # print(TC_occs1.to_check_det)
     # some datasets have problem with NA strings (vs NA type)
     try:
         TC_occs1['to_check_det'] = TC_occs1['to_check_det'].replace('<NA>', pd.NA)
-        print('<NA> handled')
+        # print('<NA> handled')
     except:
         print('<NA> issues')
     TC_occs1.dropna(subset= ['to_check_det'], inplace = True)
-    print('HERE 2', TC_occs1.to_check_det)
-    print('NAs:',sum(pd.isna(TC_occs1.to_check_det)))
+    # print('HERE 2', TC_occs1.to_check_det)
+    # print('NAs:',sum(pd.isna(TC_occs1.to_check_det)))
 
     #print(TC_occs.to_check)
     TC_occs['to_check_det'] = 'recby_problem'
@@ -337,7 +337,7 @@ def collector_names(occs, working_directory, prefix, verbose=True, debugging=Fal
     TC_occs = TC_occs.drop_duplicates(subset = ['barcode'], keep = 'first')
     
     logging.debug(f'To check (deduplicated by barcode) {TC_occs.shape}')
-    print(TC_occs.columns)
+    # print(TC_occs.columns)
     TC_occs_write = TC_occs[['recorded_by', 'orig_recby', 'colnum_full', 'det_by', 'orig_detby', 'to_check', 'to_check_det']]
 
     # output so I can go through and check manually
@@ -416,6 +416,7 @@ def reinsertion(occs_already_in_program, frame_to_be_better, names_to_reinsert, 
         print('Data integrated successfully!')
     else:
         #raise Exception("Something weird happened, please check input and code.")
+        print('Data integration anomalous! Maybe the input and original output aren\'t matched?')
         logging.info('data integration anomalous, either error or discrepancy')
         logging.info('This might for example be if the integrated data is not exactly the same size of the data i wrote in previous steps')
     return occs_merged

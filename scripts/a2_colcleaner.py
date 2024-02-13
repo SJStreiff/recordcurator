@@ -94,7 +94,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
             r'(?:\d+)', # 00000
         ]
         occs['colnum']  = occs.colnum_full.str.extract('(' + '|'.join(regex_list_digits) + ')')
-        print(occs[['colnum_full', 'colnum']])
+        # print(occs[['colnum_full', 'colnum']])
         occs['colnum'] = occs['colnum'].str.strip()
 
 
@@ -216,7 +216,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
             # (TAIF)
 
         #occs.institute.fillna(occs.prel_herbCode, inplace=True)
-        print('DEBUG:', pd.isna(occs.prel_bc.str.extract(r'([A-Z])')))
+        # print('DEBUG:', pd.isna(occs.prel_bc.str.extract(r'([A-Z])')))
         occs['sel_col_bc'] = pd.isna(occs['prel_bc'].str.extract(r'([A-Z])'))
         occs.loc[occs['sel_col_bc'] == False, 'prel_herbCode'] = ''
         logging.debug(f'prel_code: {occs.prel_herbCode}')
@@ -235,8 +235,8 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
 
         logging.debug(f'Now these columns: {occs.columns}')
 # barcodes_new = barcodes_new.replace({'^[A-Z]+0$': 'no_Barcode'}, regex=True)
-        occs.st_barcodes = occs.st_barcodes.replace({'^[A-Z]+0$': 'no_Barcode'}, regex=True)
-        occs.loc[occs['st_barcodes'] == 'no_Barcode', 'st_barcodes'] = pd.NA 
+        occs.st_barcode = occs.st_barcode.replace({'^[A-Z]+0$': 'no_Barcode'}, regex=True)
+        occs.loc[occs['st_barcode'] == 'no_Barcode', 'st_barcode'] = pd.NA 
         if occs.st_barcode.isna().sum() > 0:
         
             logging.info('I couldn\'t standardise the barcodes of some records. This includes many records (if from GBIF) with barcode = NA')
@@ -287,7 +287,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
             r'(?:\d+)', # 00000
         ]
         occs['colnum']  = occs['colnum_full'].astype(str).str.extract('(' + '|'.join(regex_list_digits) + ')')
-        print(occs[['colnum_full', 'colnum']])
+        # print(occs[['colnum_full', 'colnum']])
 
         occs['colnum'] = occs['colnum'].str.strip()
 
@@ -355,7 +355,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
             r'(?:\d+)', # 00000
         ]
         occs['colnum']  = occs['colnum_full'].astype(str).str.extract('(' + '|'.join(regex_list_digits) + ')')
-        print(occs[['colnum_full', 'colnum']])
+        # print(occs[['colnum_full', 'colnum']])
 
         occs['colnum'] = occs['colnum'].str.strip()
 
@@ -378,12 +378,12 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
         # COLLECTION NUMBERS
 
         # keep the original colnum column
-        print(occs.colnum_full)
+        # print(occs.colnum_full)
    
         occs['prefix'] = occs.colnum_full.str.extract('^([a-zA-Z]*)')
         ##this code deletes spaces at start or end
         occs['prefix'] = occs['prefix'].str.strip()
-        print(occs.prefix)
+        # print(occs.prefix)
     
         # going from most specific to most general regex, this list takes all together in the end
         regex_list_sufix = [
@@ -404,10 +404,10 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
             r'(?:\d+)', # 00000
         ]
         occs['colnum']  = occs.colnum_full.str.extract('(' + '|'.join(regex_list_digits) + ')')
-        print(occs[['colnum_full', 'colnum']])
+        # print(occs[['colnum_full', 'colnum']])
         occs['colnum'] = occs['colnum'].str.strip()
 
-        print(sum(pd.isna(occs.ddlat)))
+        # print(sum(pd.isna(occs.ddlat)))
         occs.ddlat[pd.isna(occs.ddlat)] = 0
         occs.ddlong[pd.isna(occs.ddlong)] = 0
 
@@ -502,7 +502,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
             # (TAIF)
 
         #occs.institute.fillna(occs.prel_herbCode, inplace=True)
-        print('DEBUG:', pd.isna(occs.prel_bc.str.extract(r'([A-Z])')))
+        # print('DEBUG:', pd.isna(occs.prel_bc.str.extract(r'([A-Z])')))
         occs['sel_col_bc'] = pd.isna(occs['prel_bc'].str.extract(r'([A-Z])'))
         occs.loc[occs['sel_col_bc'] == False, 'prel_herbCode'] = ''
         logging.debug(f'prel_code: {occs.prel_herbCode}')
@@ -573,7 +573,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
             r'(?:\d+)', # 00000
         ]
         occs['colnum']  = occs['colnum_full'].astype(str).str.extract('(' + '|'.join(regex_list_digits) + ')')
-        print(occs[['colnum_full', 'colnum']])
+        # print(occs[['colnum_full', 'colnum']])
 
         occs['colnum'] = occs['colnum'].str.strip()
 

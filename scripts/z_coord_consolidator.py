@@ -102,13 +102,6 @@ def coord_consolidator(occs, verbose=True, debug=False):
 
 
     print('Starting', occs.shape)
-    # we need useable species
-    # sp_problem = occs[occs.accepted_name.isna()]
-    # print('indets', sp_problem.shape)
-
-    # occs = occs[~occs.accepted_name.isna()]
-    # split dataset by s.n. and non s.n.
-    # doesn't make sense -> we want to just crossfill identical records
 
 
     ## Mask coordinates whic do not check out with the country field.
@@ -197,6 +190,7 @@ def coord_consolidator(occs, verbose=True, debug=False):
  
     # clean out accidental NA values
     occs_new.loc[occs_new['geo_issues'] == 'nan', ['geo_issues']] = pd.NA
+    occs_new.loc[occs_new['geo_issues'] == 'NONE', ['geo_issues']] = pd.NA
 
 
     # print(occs_new.geo_issues)

@@ -21,7 +21,7 @@ CONTAINS:
 
 import pandas as pd
 import numpy as np
-
+import regex as re
 
 import rapidfuzz
 from rapidfuzz import process, fuzz
@@ -34,183 +34,120 @@ from rapidfuzz.process import extract
 
 
 
-
-def change(bad_name, name_list):
-    """ Function written by TLPC
+def prepare_reference_frame(reference_names):
     """
-    names=[] #create an empty list where we strore the correct names based on the search
-    proportion=[] #create an empty list where we strore the ratio values of the fuzzy search
-
-    for i in bad_name:
-        print(i)
-        x=extractOne(i, name_list, scorer=normalized_similarity, processor=None)
-        #print(x[0])
-        print(x[1])
-        names.append(x[0])
-        proportion.append(x[1])
-    return names, proportion
-
-# nms, prop = change(test_name, stand_names)
-# print(nms, prop)
-
-
-
-
-
-# mdb = pd.read_csv('~/Sync/1_Annonaceae/GLOBAL_final/GDB/master_db.csv', sep = ';', na_values = '-9999')
-
-
-# names = mdb[['recorded_by', 'huh_name', 'orig_recby', 'geo_col']]
-# names = names.drop_duplicates(keep='first')
-
-# names['orig_recby'] = names['orig_recby'].apply(lambda x: ', '.join(set(filter(lambda s: s.lower() != '<na>', str(x).split(', ')))) if pd.notna(x) else pd.NA)    # this combines all duplicated values within a cell
-# names = names[names.recorded_by.notna()]
-# newnames = names[['recorded_by', 'orig_recby']]
-# names = names[names.geo_col.notna()]
-
-
-
-# names['orig_recby'] = names['orig_recby'].astype(str).str.replace('Collector(s):', '', regex=False)
-# names['orig_recby'] = names['orig_recby'].astype(str).str.replace('Unknown', '', regex=False)
-# names['orig_recby'] = names['orig_recby'].astype(str).str.replace('&', ';', regex=False)
-# names['orig_recby'] = names['orig_recby'].astype(str).str.replace(' y ', ';', regex=False)
-# names['orig_recby'] = names['orig_recby'].astype(str).str.replace(' and ', ';', regex=False)
-# names['orig_recby'] = names['orig_recby'].astype(str).str.replace('Jr.', 'JUNIOR', regex=False)
-# names['orig_recby'] = names['orig_recby'].astype(str).str.replace('et al.', '', regex=False)
-# names['orig_recby'] = names['orig_recby'].astype(str).str.replace('et al', '', regex=False)
-# names['orig_recby'] = names['orig_recby'].astype(str).str.replace('etal', '', regex=False)
-# #names['orig_recby'] = names['orig_recby'].astype(str).str.replace('Philippine Plant Inventory (PPI)', 'Philippines, Philippines Plant Inventory', regex=False)
-# #we will need to find a way of taking out all the orig_recby with (Dr) Someone's Collector
-
-# #isolate just the first collector (before a semicolon)
-# names['orig_recby'] = names['orig_recby'].astype(str).str.split(';').str[0]
-
-# names['orig_recby'] = names['orig_recby'].str.strip()
-
-# newnames.loc[newnames['orig_recby'] == '', 'orig_recby'] = pd.NA
-# newnames.loc[newnames['orig_recby'] == ' ', 'orig_recby'] = pd.NA
-# newnames.loc[newnames['orig_recby'] == '-9999', 'orig_recby'] = pd.NA
-# newnames.loc[newnames['orig_recby'] == 'nan', 'orig_recby'] = pd.NA
-# newnames.loc[newnames['orig_recby'] == 'None', 'orig_recby'] = pd.NA
-# newnames.loc[newnames['orig_recby'] == 'NaN', 'orig_recby'] = pd.NA
-# newnames.loc[newnames['orig_recby'] == '<NA>', 'orig_recby'] = pd.NA
-# #newnames.orig_recby = newnames.orig_recby.replace(' ', pd.NA)
-# newnames = newnames[newnames.orig_recby.notna()]
-# newnames = newnames.head(10)
-
-
-names = pd.read_csv('~/Desktop/names_test.csv', sep =';')
-names = names.drop_duplicates(keep='first')
-names = names[names.geo_col.notna()]
-#names['surname'] = names['recby_regex'].str.split(', ', expand=True)[0]
-#names['initials'] = names['recby_regex'].str.split(', ', expand=True)[1]
-
-print(names)
-#print(newnames)
-
-
-# names = names.head(2)
-
-
-
-def initials_to_full_name(initials, reference):
-    best_match = None
-    highest_similarity = 0
-
-    return best_match, similarity
-
-
-
-
-def compare_names(list1, list2):
+    Takes a series/list of names (e.g. from HUH) and formats into Full, Surname and Firstnames for 
+    easy crossreferencing with Regex names.
+    """
 
 # Initialize empty lists for surnames and first names
     surnames2 = []
     first_names2 = []
-
     # Iterate through the names and split them
-    for name in list2:
+    for name in reference_names:
         parts = name.split(', ')
 
         # Check if there's a first name, and handle accordingly
         if len(parts) == 2:
             surname, first_name = parts
         else:
-            surname, first_name = parts[0], 'NA'
+            surname, first_name = parts[0], '0'
 
         # Append to the respective lists
         surnames2.append(surname)
         first_names2.append(first_name)
 
 
+    reference = pd.DataFrame({'Full':reference_names, 'surname': surnames2, 'firstnames': first_names2})
 
-    reference = pd.DataFrame({'Full':list2, 'surname': surnames2, 'firstnames': first_names2})
-
-
-    #print(reference)
+    return reference
 
 
 
-    for name1 in list1:
+def extract_best_name(name_to_check, reference_df):
+        """
+        takes a name and checks for best match within reference dataframe.
+        Reference dataframe is formatted as in function above. (i.e. columns Full, surname and firstnames)
+        """
+
         # Extract surname from the first lis
-        #print(name1)
-        surname1 = name1.split(', ')[0]
-        initials1 = name1.split(', ')[1]
-        # print('Surname query:\n', surname1)
+       # print(name_to_check)
+
+        if len(name_to_check.split(',')) == 2:
+            #print(name_to_check.split(','))
+            surname_to_check = name_to_check.split(', ')[0]
+            initials1 = name_to_check.split(', ')[1]
+        else:
+            surname_to_check = name_to_check.split(', ')[0]
+            initials1 = ' '
+
         # Perform a fuzzy match based on the surname
-        matches = pd.DataFrame(process.extract(surname1, reference['surname'], scorer=ratio, score_cutoff=50)) # 50 is very low. but who knows
-        # print(matches)
+        # matches = pd.DataFrame(process.extract(surname_to_check, reference_df['surname'], scorer=ratio, score_cutoff=80)) # 50 is very low. but who know
+        matches = pd.DataFrame(process.extractOne(surname_to_check, reference_df['surname'], scorer=ratio)) # 50 is very low. but who know
         matched_sn = matches.iloc[:,0]
-        # print('HERE matching surnames\n',matched_sn)
-
-
-        # print('New reference\n',reference[reference['surname'].isin(matched_sn)])
-
-        reference_subset = reference[reference['surname'].isin(matched_sn)]
-
-
-
-
-        #print(matches[0])
-        # best_surname_match = matches[0][0]
-        # surname_sim = matches[0][1]
-        
-
-        # for name in reference_subset['firstnames']:
-            # Extract initials from the full name
-            #name_initials = ''.join(part[0] for part in name.split())
-            
-            # Calculate similarity between the provided initials and name initials
-        test = process.extract(initials1, reference_subset['firstnames'], scorer=ratio, limit=1)
+        # print('match1:', matched_sn)
+        # then subset just the matching surnames
+        reference_subset = reference_df[reference_df['surname'].isin(matched_sn)]
+        # print('REFERENCE', reference_subset)
+        # Calculate similarity between the provided initials and reference initials
+        test = process.extract(initials1, reference_subset['firstnames'], scorer=normalized_similarity)
         # print('test\n', test)
         bestname = test[0][0]
+        #print('RES:', bestname, '\nINPUT:', initials1)
+
+        #Check if the first initial mathces!
+        # try:
+        init_input = initials1[0]
+        init_result = bestname[0]
+        if init_input == init_result:
+             print('SUCCES?')
+        else:
+            print('FAIL?')
+            print('I:',init_input)
+            print('R:', init_result)
+        # except:
+        #      init_input = pd.NA
+
         bestratio = test[0][1]
 
         # print('NEW:\n', bestname, bestratio)
         newname = reference_subset.loc[reference_subset.firstnames == bestname, 'Full']
-        # print('THISISIT:\n', newname)
-            # similarity = ratio(initials1, name_initials)
-
-            # highest_similarity = similarity
-            # print('BEST:\n',highest_similarity)
-            # best_match = reference[reference.]
 
 
 
-        # # Check if the best match contains initials
-        # if any(initial in best_surname_match for initial in initials1.split()):
-        #     best_match = initials_to_full_name(initials1, reference_subset)
-        # else:
-        #     best_match = best_surname_match
-        
-
-
-        print(f"Original Name: {name1}, Best Match: {newname}")
-
+        print(f"Original Name: {name_to_check}, Best Match: {newname}")
+    
+    #return
 
 # Example usage
-compare_names(names['recby_regex'], names['recorded_by'])
 
 
-# nms, prop = change(newnames['recorded_by'], names['huh_name'])
-# print(nms)
+
+names = pd.read_csv('~/Desktop/names_test.csv', sep =';')
+names = names.drop_duplicates(keep='first')
+#names = names[names.geo_col.notna()]
+#names = names.head(15)
+ref_basic = names[names.geo_col.notna()]
+print(names)
+ref = prepare_reference_frame(ref_basic['recorded_by'])
+print(ref)
+
+names = names.apply(lambda row: extract_best_name(row['recby_regex'], ref), axis = 1)
+#compare_names(names['recby_regex'], names['recorded_by'])
+
+
+#TODO
+"""
+check for inverted names in reference:
+     input reference script into HUH query
+test with LAtin-American names!
+
+stuff like this:
+
+Original Name: Darbyshire, I, Best Match: 700    Iain Darbyshire
+FAIL?
+I: C
+R: 0
+Original Name: Doumenge, C, Best Match: 711    Charles Doumenge
+
+"""

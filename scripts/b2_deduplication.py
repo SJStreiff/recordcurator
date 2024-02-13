@@ -33,7 +33,8 @@ import b0_country_coordinates as cc_functions
 
 
 
-def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User, step='Raw', verbose=True, debugging=False):
+def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, 
+                      User, step='Raw', country_coordinate_check=False, verbose=True, debugging=False):
     '''
     This one actually goes and cleans/merges duplicates.
         > occs = occurrence data to de-duplicate
@@ -54,21 +55,27 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
     #print(occs.dtypes)
     #occs = occs.replace(np.nan, pd.NA)
 
-    dup_cols = dupli #['recorded_by', 'colnum', 'sufix', 'col_year'] # the columns by which duplicates are identified
+    dup_cols = dupli # the columns by which duplicates are identified
 
     #-------------------------------------------------------------------------------
    # Housekeeping. Clean up problematic types and values...
 
     # occs = occs.str.strip()
     occs1 = occs.replace(['', ' '], pd.NA)
+    # clean prefix with surnames in prefix
+    occs1['surnames'] = occs1.recorded_by.astype(str).str.split(',').str[0]
+    #print(master.surnames)
+    mask = occs1['prefix'] == occs1['surnames']
+    occs1.loc[mask, 'prefix'] = pd.NA
 
-    
     #-------------------------------------------------------------------------------
     # find duplicated BARCODES before we do anything
+
     # this step only takes place in master step.
     if step=='Master':
         logging.info('Deduplication: MASTER-1')
         # ONLY RETAIN DUPLICATED BARCODES 
+        # in theory this should not be the case at all, as barcodes are cleaned and merged in  the pre-merge step
         duplic_barcodes = occs1[occs1.duplicated(subset=['barcode'], keep=False)] # gets us all same barcodes
         logging.info(f'BARCODES DUPLICATED: {duplic_barcodes.shape}')
 
@@ -134,11 +141,9 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
             date = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
             barcode_merged['modified'] = User + '_' + date
             logging.info(f'{barcode_merged.modified}')
-
-
-            logging.info(f'deduplocated barcodes: {barcode_merged.shape} {barcode_merged.modified}')
+            logging.info(f'deduplicated barcodes: {barcode_merged.shape} {barcode_merged.modified}')
             
-                # merge in master columns to the rest.
+            # merge in master columns to the rest.
             
 
 
@@ -191,10 +196,6 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
                 )
         # END of if/else Expert file
         # merge in master columns to the rest.
-       
-
-
-
         ### and re merge deduplicated barcodes and unique barcodes
         occs1 = pd.concat([cl_barcodes, barcode_merged], axis=0) ###CHECK axis assignments
         logging.info(f'After deduplocated barcodes entire data: {occs1.shape}')
@@ -245,6 +246,39 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
         occs_dup_col[dup_cols] = occs_dup_col[dup_cols].fillna(-9999)
         # print('PROBLEM:\n', occs_dup_col[dup_cols], occs_dup_col.ddlat)
 
+        # if we have a full database, the geo_issues column should be present. If this is new data, then it's 
+        if {'geo_issues'}.issubset(occs_dup_col.columns):
+            logging.info('Geo_issues used to mask coordinates and check for better duplicate coordinate.')
+            # backup coordinate-values
+            occs_dup_col['ddlat_bak'] = occs_dup_col.ddlat
+            occs_dup_col['ddlong_bak']= occs_dup_col.ddlong
+
+            # clean geo_issues (comes from coordinate-cleaner step)
+            occs_dup_col['geo_issues'] = occs_dup_col['geo_issues'].apply(lambda x: ', '.join(set(filter(lambda s: s.lower() != 'none', str(x).split(', ')))))    # this combines all duplicated values within a cell
+            # set any probl. coordinates NA
+            occs_dup_col.loc[occs_dup_col['geo_issues'] != '', ['ddlat']] = pd.NA
+            occs_dup_col.loc[occs_dup_col['geo_issues'] != '', ['ddlong']] = pd.NA
+            
+        # fill NA or 0 coordinates from duplicates     
+        occs_dup_col.loc[occs_dup_col['ddlat'] == 0, ['ddlat']] = pd.NA
+        occs_dup_col.loc[occs_dup_col['ddlong'] == 0, 'ddlong'] = pd.NA
+        occs_dup_col.loc[occs_dup_col['ddlat'] == -9999, 'ddlat'] = pd.NA
+        occs_dup_col.loc[occs_dup_col['ddlong'] == -9999, 'ddlong'] = pd.NA
+
+        # crossfill coordinates if NA or 0 
+        occs_dup_col['ddlat'] = occs_dup_col.groupby(['recorded_by','country','col_year', 'colnum', 'locality'])['ddlat'].transform(lambda x: x.fillna(method='ffill').fillna(method='bfill'))
+        occs_dup_col['ddlong'] = occs_dup_col.groupby(['recorded_by','country','col_year', 'colnum', 'locality'])['ddlong'].transform(lambda x: x.fillna(method='ffill').fillna(method='bfill'))
+
+        if {'geo_issues'}.issubset(occs_dup_col.columns):
+            logging.info('Geo_issues used to consolidate coordinates:')
+            # if no help from geo_issues, then re-fill with the backup values
+            occs_dup_col['ddlat'] = occs_dup_col['ddlat'].fillna(occs_dup_col['ddlat_bak'])
+            occs_dup_col['ddlong'] = occs_dup_col['ddlong'].fillna(occs_dup_col['ddlong_bak'])
+
+            # to give an idea of how much this changes
+            log_df = occs_dup_col[occs_dup_col.ddlat != occs_dup_col.ddlat_bak]
+            logging.info(f'We had this full df: {occs_dup_col.shape}, and for these we changed coordinates: {log_df.shape}')
+
         # calculate variance between grouped objects
         occs_dup_col['ddlat_var'] = occs_dup_col.groupby(dup_cols)['ddlat'].transform('var')
         occs_dup_col['ddlong_var'] = occs_dup_col.groupby(dup_cols)['ddlong'].transform('var')
@@ -255,9 +289,11 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
         # and drop the large variance data here.
         occs_ok = occs_dup_col[(occs_dup_col['ddlat_var'] <= 0.1) & (occs_dup_col['ddlong_var'] <= 0.1)]
 
-        occs_large_var['coordinate_country'] = occs_large_var.apply(lambda row: cc_functions.get_cc_new(row['ddlat'], row['ddlong']), axis = 1, result_type = 'reduce')
-                #occs_large_var['cc_discrepancy'] = (occs_prob_coords['country_id'] != occs_prob_coords['coordinate_country'])
-        
+        if country_coordinate_check:
+        # this step can check the country-coordinate match.
+        # BUT: it is very time intensive
+            occs_large_var['coordinate_country'] = occs_large_var.apply(lambda row: cc_functions.get_cc_new(row['ddlat'], row['ddlong']), axis = 1, result_type = 'reduce')
+
         if len(occs_large_var) > 0:
         # if we have records that have excessive variance 
             # read the old problematic values
@@ -317,23 +353,18 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
         occs_dup_col['accepted_name'] = occs_dup_col.groupby(dup_cols, group_keys=False, sort=False)['accepted_name'].transform('first')
         occs_dup_col['genus'] = occs_dup_col.groupby(dup_cols, group_keys=False, sort=False)['genus'].transform('first')
         occs_dup_col['specific_epithet'] = occs_dup_col.groupby(dup_cols, group_keys=False, sort=False)['specific_epithet'].transform('first')
+        occs_dup_col['status'] = occs_dup_col.groupby(dup_cols, group_keys=False, sort=False)['status'].transform('first')
+        occs_dup_col['ipni_no'] = occs_dup_col.groupby(dup_cols, group_keys=False, sort=False)['ipni_no'].transform('first')
+
         # and values 0 back to NA
         occs_dup_col[dup_cols] = occs_dup_col[dup_cols].replace(0, pd.NA)
 
         
-        ###### HERE no data left in sn step... 
-        #print('HERE', occs_dup_col)
-
-        
-
-
-
     else:
-        logging.info(f'test1 {occs_dup_col.shape}')
-        logging.info(f'occs_dup_col.specific_epithet')
+        # not master -> RecordCleaner
         occs_dup_col['specific_epithet'] = occs_dup_col['specific_epithet'].str.replace('sp.', '')
         occs_dup_col['specific_epithet'] = occs_dup_col['specific_epithet'].str.replace('indet.', '') 
-        logging.info(f'test2 {occs_dup_col.shape}')
+        # logging.info(f'test2 {occs_dup_col.shape}')
 
         dups_diff_species = occs_dup_col[occs_dup_col.duplicated(['col_year','colnum_full', 'country'],keep=False)&~occs_dup_col.duplicated(['recorded_by','colnum_full','specific_epithet','genus'],keep=False)]
         dups_diff_species = dups_diff_species.sort_values(['col_year','colnum_full'], ascending = (True, True))
@@ -343,7 +374,7 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
         # backup the old dets
         occs_dup_col['genus_old'] = occs_dup_col['genus']
         occs_dup_col['specific_epithet_old'] = occs_dup_col['specific_epithet']
-        logging.info(f'test3 {occs_dup_col.shape}')
+        # logging.info(f'test3 {occs_dup_col.shape}')
         
         # replace zeroes with NA, better for downstream sorting
         occs_dup_col['det_year'].replace(0, pd.NA, inplace=True)
@@ -356,7 +387,7 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
        # groupby the deduplication columns,  sort by increasing (low to high) det_year
         occs_dup_col = occs_dup_col.groupby(dup_cols, group_keys=False, sort=True).apply(lambda x: x.sort_values('det_year', ascending=False))
         # double checking
-        logging.info(f'There used to be errors here,  {occs_dup_col.shape}')
+        # logging.info(f'There used to be errors here,  {occs_dup_col.shape}')
 
         # return the -9999 value to NA
         occs_dup_col['sufix'].replace(-9999, 0, inplace =True)
@@ -376,6 +407,7 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
         
         occs_dup_col.to_csv(working_directory + 'TO_CHECK_' + prefix + 'dupli_dets_cln.csv', index = False, sep = ';')
         logging.debug(f'\n I have saved a checkpoint file of all cleaned and processed duplicates, nicely beside each other, to: {working_directory}TO_CHECK_{prefix}dupli_dets_cln.csv')
+
 
     #-------------------------------------------------------------------------------
     # DE-DUPLICATE AND THEN MERGE
@@ -608,7 +640,7 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
             occs_dup_col = occs_dup_col.sort_values(['status', 'expert_det'], ascending = [True, True])
             logging.info(f'{occs_dup_col.accepted_name}')
             # master but not expert. proceed as normal.
-            print(occs_dup_col.modified.isna())
+            # print(occs_dup_col.modified.isna())
             occs_dup_col.modified = occs_dup_col.modified.fillna('nan')
             occs_dup_col.geo_issues = occs_dup_col.geo_issues.fillna('NONE')
             occs_merged = occs_dup_col.groupby(dup_cols, as_index = False).agg(
@@ -742,6 +774,8 @@ def duplicate_cleaner(occs, dupli, working_directory, prefix, expert_file, User,
         logging.info('4 s.n. found')
     except:
         logging.info('4 s.n. NOT found')
+
+        
 
     # de-duplicated duplicates sorting to get them ready for merging
     #print(len(dupli))

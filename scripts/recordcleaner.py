@@ -102,14 +102,16 @@ if __name__ == "__main__":
 #-------------------------------------------------------------------------------------------------------#
 
 
-
+    #####################################################################################################
     ###------------------------------------------ Small expert dataset ------------------------------####
+    #####################################################################################################
+
     if args.expert_file == 'SMALLEXP':
-        print('small EXpert setting')
+        print('small Expert setting')
         logging.info('#> SMALL EXPERT file. separate step')
         exp_occs = small_exp.read_expert(args.input_file)
         logging.info('#> SMALL EXPERT file. HUH crossreference')
-        exp_occs_2 = huh_query.huh_wrapper(exp_occs, verbose = True, debugging = False)
+        exp_occs_2 = huh_query.huh_wrapper(exp_occs, verbose = False, debugging = False) 
         logging.info('#> SMALL EXPERT file. IPNI crossreference')
         exp_occs_3 = small_exp.exp_run_ipni(exp_occs_2)
 
@@ -134,7 +136,10 @@ if __name__ == "__main__":
 
 #----------------------------------------------------------------------------------------------------------#
 
+    ########################################################################################################
     ###------------------------------------------ 'Normal' dataset -------------------------------------####
+    ########################################################################################################
+    
     else:
         logging.info('#> NORMAL recordcurator')
         ###------------------------------------------ Step A -------------------------------------------####
@@ -150,8 +155,6 @@ if __name__ == "__main__":
             tmp_occs_2['expert_det'] = 'expert_det_file'
         if args.expert_file == 'NO':
             tmp_occs_2['expert_det'] = pd.NA
-
-#TODO write out file for verifying stuff...
 
         #-----------------------------------------------
         logging.info('\n#> A3: Collector name processing\n')
@@ -199,7 +202,7 @@ if __name__ == "__main__":
         # HUH name query
         logging.info('\n#> A4: HUH name query\n')
         print('This may take a minute to initialise the HUH crossreference')
-        tmp_occs_3 = huh_query.huh_wrapper(tmp_occs_3, verbose = True, debugging = False)
+        tmp_occs_3 = huh_query.huh_wrapper(tmp_occs_3, verbose = False, debugging = False)
         tmp_occs_3 = tmp_occs_3.reset_index(drop=True)
         logging.info('\n #> STEP A complete.\n')
         #-----------------------------------------------
@@ -283,7 +286,10 @@ if __name__ == "__main__":
 
         logging.info('#> C: Taxonomy done.')
         
-        #-----------------------------------------------
+    ########################################################################################################
+    ###------------------------------------------DONE: Write dataset -----------------------------------####
+    ########################################################################################################
+    
         # output cleaned data to csv
         tmp_occs_6.to_csv(args.output_directory+args.prefix+'cleaned.csv', index=False, sep=';')
         logging.info(f'\n\n---------------------------------------------\n The output of this first processing is saved to: {args.output_directory+args.prefix}cleaned.csv\n---------------------------------------------\n')
@@ -294,4 +300,6 @@ if __name__ == "__main__":
     logging.info('\n\n------------------****** R *****-----------------------\n\n')
 
 
+########################################################################################################
 ###-------- END OF RECORDCLEANER ------###
+########################################################################################################

@@ -88,7 +88,7 @@ def get_cc_new(ddlat, ddlong):
     try:
         out2 = geocoder.osm([ddlat, ddlong], method='reverse')
         out_country = out2.country
-        print(out_country)
+        # print(out_country)
         if out_country == 'Brasil':
             out_country = 'Brazil'    
         out_iso3 = cc.convert(out_country, to='ISO3')

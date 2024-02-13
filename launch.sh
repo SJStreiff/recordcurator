@@ -58,9 +58,9 @@ VERBOSE='-v 1'
 INPUT_2=$(echo $OUT_DIR$PREFIX'cleaned.csv')
 OUT_2=$(echo $OUT_DIR$PREFIX'spatialvalid.csv')
 MASTERDB='/Users/serafin/Sync/1_Annonaceae/G_GLOBAL_distr_DB/X_GLOBAL/'
-HOSTNAME='10.4.91.57'
-TABLE='phil_test_221209'
-SCHEMA='serafin_test'
+HOSTNAME='12.34.5.67' #IP address of Database server
+TABLE='table_name' # postgres/table name
+SCHEMA='schema_name'
 LOC='local'
 NA_VAL='-9999'
 

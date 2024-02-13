@@ -64,11 +64,6 @@ def get_HUH_names(recordedBy, colyear, orig_recby, verbose=True, debugging=False
 
     if verbose:
         print('HUH name checker checking the botanist', recordedBy, '\n .........................\n')
-    
-
-
-    else:
-        print(recordedBy)
     logging.info(f'HUH name checker checking the botanist {recordedBy}')
     try:
         recby_length = len(recordedBy.split())
@@ -731,10 +726,10 @@ def huh_wrapper(occs, verbose=True, debugging=False):
     if {'col_year'}.issubset(occs.columns):   
         mod_data = occs[['recorded_by', 'col_year', 'orig_recby']]
     else:
-        try:
-            print(occs.col_year)
-        except:
-            print('No col year, adding NA')
+        # try:
+        #     # print(occs.col_year)
+        # except:
+        #     # print('No col year, adding NA')
         occs['col_year'] = pd.NA
         mod_data = occs[['recorded_by', 'col_year', 'orig_recby']]
     
@@ -804,10 +799,10 @@ def huh_wrapper(occs, verbose=True, debugging=False):
 # print(test)
 
 
-# # # debugging, but other names are more suitable.
+# # # # debugging, but other names are more suitable.
 # asagray = "Wilde, WJJO de"
-# test1, test2, test3 = get_HUH_names(asagray, 1993, 'Philippines', 'Wilde, WJJO', verbose = True, debugging=True)
-# print(test1, test2, test3)
+# test1, test2, test3 = get_HUH_names(asagray, 1993, 'Philippines', 'Wilde, WJJO', debugging=True)
+# print(test1)#, test2, test3)
 
 
 

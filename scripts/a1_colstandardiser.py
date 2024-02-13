@@ -69,7 +69,7 @@ def column_standardiser(importfile, data_source_type, verbose=True, debugging = 
         #occs = occs.fillna(pd.NA) # problems with this NA
         occs['source_id'] = 'gbif'
 
-        print(occs.link)
+        # print(occs.link)
 
     elif(data_source_type == 'BRAHMS'):
         # for data from BRAHMS extracts
@@ -77,7 +77,7 @@ def column_standardiser(importfile, data_source_type, verbose=True, debugging = 
         occs = pd.read_csv(imp, sep = ';',  dtype = str, na_values=pd.NA, quotechar='"') # read data
         occs = occs.rename(columns = z_dependencies.brahms_key) # rename
         occs = occs[z_dependencies.brahms_cols] # and subset
-        print('READ3',occs.columns)
+        # print('READ3',occs.columns)
         #occs = occs.fillna(pd.NA) # problems with this NA
         occs['source_id'] = 'brahms'
 
@@ -93,7 +93,7 @@ def column_standardiser(importfile, data_source_type, verbose=True, debugging = 
         occs['source_id'] = 'MO_tropicos'
 
 
-        print(occs[occs.scientific_name == 'Mosannona raimondii'])
+        # print(occs[occs.scientific_name == 'Mosannona raimondii'])
 
     elif(data_source_type == 'RAINBIO'):
         # for data from BRAHMS extracts
@@ -144,7 +144,7 @@ def column_standardiser(importfile, data_source_type, verbose=True, debugging = 
     logging.debug(f'Testing new type implementation: {occs.dtypes}')
     logging.info(f'{occs}')
 
-    print(occs[['col_day', 'col_month', 'col_year']])
+    # print(occs[['col_day', 'col_month', 'col_year']])
     for column in occs.columns:
         # Iterate over each row in the column
         for index, value in occs[column].items():
@@ -159,6 +159,6 @@ def column_standardiser(importfile, data_source_type, verbose=True, debugging = 
                 b=1
  
     occs = occs.astype(dtype = z_dependencies.final_col_type, errors='raise')
-    print(occs.dtypes)
+    # print(occs.dtypes)
     #_bc
     return occs

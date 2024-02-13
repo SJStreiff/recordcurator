@@ -130,7 +130,8 @@ def powo_query(gen, sp, distribution=False, verbose=True, debugging=False):
         
 
     if distribution:
-        print(native_to)
+        if verbose:
+            print(native_to)
         return status, scientificname, species_author, ipni_no, ipni_pubYr, native_to
     else:
         return status, scientificname, species_author, ipni_no, ipni_pubYr 
