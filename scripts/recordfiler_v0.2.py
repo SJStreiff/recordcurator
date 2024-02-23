@@ -235,6 +235,14 @@ if __name__ == "__main__":
     masters = masters[~masters.barcode.isna()]
     # reading master databases + backlogs finished
 
+
+    #> Some housekeeping
+    # the columns we clean (reduce repeating information from deduplication steps)
+    cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'orig_bc', 
+                   'geo_issues', 'det_by', 'link', 'orig_recby', 'modified', 'orig_recby']
+       
+
+
     ###########################################################################################################
     ###---------------------- Small/minimal expert datasets for integration --------------------------------###
     ###########################################################################################################
@@ -246,24 +254,31 @@ if __name__ == "__main__":
         
         # sort out indet and no_coord dat
         exp_occs_final = cleanup.clean_up_nas(master_exp_occs, args.na_value)
+        
+        exp_occs_final.accepted_name = exp_occs_final.accepted_name.replace('nan', None)
+        exp_occs_final.accepted_name = exp_occs_final.accepted_name.replace('<NA>', None)
+        exp_occs_final.accepted_name = exp_occs_final.accepted_name.replace(' ', None)              
+        exp_occs_final.ddlat = exp_occs_final.ddlat.replace('0', np.nan)
+        exp_occs_final.ddlong = exp_occs_final.ddlong.replace('0', np.nan)
+        
         exp_occs_final = exp_occs_final[z_dependencies.final_cols_for_import]
         exp_occs_final = exp_occs_final.astype(z_dependencies.final_col_for_import_type)
-        exp_occs_final = cleanup.cleanup(exp_occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'barcode', 'orig_bc', 'geo_issues', 'det_by', 'link'], verbose=True)
-  
+        exp_occs_final = cleanup.cleanup(exp_occs_final, cols_to_clean=cols_to_clean, verbose=True)
+        exp_occs_final = cleanup.clean_up_nas(exp_occs_final, args.na_value)
         # INDET
         indet_to_backlog = exp_occs_final[exp_occs_final.accepted_name == args.na_value] # ==NA !!      
         occs = exp_occs_final[exp_occs_final.accepted_name != args.na_value] # NOT NA!
         # COORDS
-        no_coords_to_backlog = occs[occs.ddlat == args.na_value] # ==NA !!
+        no_coords_to_backlog = occs[occs.ddlat == int(args.na_value)] # ==NA !!
         # MASTER
-        deduplid = occs[occs.ddlat != args.na_value] # NOT NA!
+        deduplid = occs[occs.ddlat != int(args.na_value)] # NOT NA!
+        deduplid = deduplid[(deduplid.recorded_by != args.na_value) & (deduplid.colnum != args.na_value)]
 
         # print(deduplid.shape)
 
         logging.info('SMALLXP handling completed')
         # final data is written below after else:
 
-        print(sum(deduplid.accepted_name.isna()))
   
     ###########################################################################################################
     ###------------------------------ NORMAL DATASET INTEGRATION -------------------------------------------###
@@ -295,11 +310,15 @@ if __name__ == "__main__":
         logging.info(f'The numbered records being deduplicated {len(occs_num)}')
         logging.info(f'The s.n. records being deduplicated {len(occs_s_n)}')
         # deduplicate (x2)
-        occs_num_dd = dedupli.duplicate_cleaner(occs_num, dupli = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3'], 
+        # the columns for deduplication
+        dupli_num = ['recorded_by', 'colnum', 'sufix', 'col_year', 'country_iso3']
+        #occs_num = cleanup.clean_up_nas(occs_num, pd.NA)
+        occs_num_dd = dedupli.duplicate_cleaner(occs_num, dupli=dupli_num, 
                                         working_directory = args.working_directory, prefix = 'Integrating_', User = username, step='Master',
                                         expert_file = args.expert_file, verbose=True, debugging=False)
         if len(occs_s_n) != 0:
-            occs_s_n_dd = dedupli.duplicate_cleaner(occs_s_n, dupli = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3'], 
+            dupli_sn = ['recorded_by', 'col_year', 'col_month', 'col_day', 'accepted_name', 'country_iso3']
+            occs_s_n_dd = dedupli.duplicate_cleaner(occs_s_n, dupli=dupli_sn, 
                                     working_directory =  args.working_directory, prefix = 'Integrating_', User = username, step='Master',
                                     expert_file = args.expert_file, verbose=True, debugging=False)
             # recombine data 
@@ -322,9 +341,7 @@ if __name__ == "__main__":
         occs_final = occs_final[z_dependencies.final_cols_for_import]
         occs_final = occs_final.astype(z_dependencies.final_col_for_import_type)
         # clean up duplicated values within cells
-        occs_final = cleanup.cleanup(occs_final, cols_to_clean=['source_id', 'colnum_full', 'institute', 
-                                                                'herbarium_code', 'orig_bc', 'geo_issues',
-                                                                'det_by', 'link', 'orig_recby'], verbose=True)
+        occs_final = cleanup.cleanup(occs_final,cols_to_clean=cols_to_clean, verbose=True)
         # check and double check NA values, set to a numeric value (for SQL)
         occs_final = cleanup.clean_up_nas(occs_final, args.na_value)
 
@@ -349,22 +366,33 @@ if __name__ == "__main__":
     ###########################################################################################################
     ###------------------------------ BACKUP DATASET, WRITE FILES ------------------------------------------###
     ###########################################################################################################
+    
+    # output information on datasets being written
+    print('All together:', len(deduplid)+len(indet_to_backlog)+len(no_coords_to_backlog))
+    print('Final size:', len(deduplid))
+    print('Indet backlog size:', len(indet_to_backlog))
+    print('No-Coord backlog size:', len(no_coords_to_backlog))
+    # same to logfile
 
+    logging.info('#> Merging steps complete.\n------------------------------------------------')
+    logging.info(f'Final size: {len(deduplid)}')
+    logging.info(f'Indet backlog size: {len(indet_to_backlog)}')
+    logging.info(f'No-Coord backlog size: {len(no_coords_to_backlog)}')
+    
+    
+    csv_data = deduplid.to_csv(index=False)
+    # Estimate file size in bytes
+    estimated_size = len(csv_data.encode('utf-8'))
+    print(f"Estimated size of new master-DB: {estimated_size / (1024 * 1024):.2f} MB")
+    
     # BACK-UP previous files    
     no_coord_bl.to_csv(mdb_dir + '/backups/coord/'+date+'_coord_backlog.csv', sep=';')
     BL_indets.to_csv(mdb_dir + '/backups/indet/'+date+'_indet_backlog.csv', sep=';')
     m_DB.to_csv(mdb_dir + '/backups/'+date+'_master_backup.csv', sep = ';', index = False)#, mode='x')
     # the mode=x prevents overwriting an existing file...
 
-    logging.info('\n#> Merging steps complete.\n------------------------------------------------')
-
-    logging.info(f'Trimming master database before writing: {len(deduplid)}')
     # another double check
     deduplid = deduplid[z_dependencies.final_cols_for_import]
-    print('Final size:', len(deduplid))#, 'With columns:', deduplid.columns)
-    print('Indet backlog size:', len(indet_to_backlog))
-    print('No-Coord backlog size:', len(no_coords_to_backlog))
-    # this is now the new master database...
     deduplid = deduplid.reset_index(drop=True)
    
     indet_to_backlog.to_csv(mdb_dir + 'indet_backlog.csv', sep=';', index=False)
@@ -372,6 +400,6 @@ if __name__ == "__main__":
     deduplid.to_csv(mdb_dir + 'master_db.csv', sep=';', index=False)
 
     logging.info(f'------------------------------------------------\n#> {len(deduplid)} Records filed away into master database.\n')
-    
+    logging.info(f'-Backlogs are annotated by {date}.')    
 
 #################################################################################################################################################

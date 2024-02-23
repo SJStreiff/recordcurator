@@ -87,6 +87,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
 
         # extract only digits without associated stuff, but including some characters (colNum)
         regex_list_digits = [
+            r'(?:\d+/\d+)',
             r'(?:\d+\-\d+\-\d+)', # of structure 00-00-00
             r'(?:\d+\-\d+)', # of structure 00-00
             r'(?:\d+\s\d+\s\d+)', # 00 00 00 or so
@@ -270,7 +271,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
 
         #create sufix , extract text or pattern after the number
         regex_list_sufix = [
-          r'(?:[a-zA-Z ]*)$', ## any charcter at the end
+          r'(?:[a-zA-Z]*)$', ## any charcter at the end
           r'(?:SR_\d{1,})', ## extract 'SR_' followed by 1 to 3 digits
           r'(?:R_\d{1,})', ## extract 'R_' followed by 1 to 3 digits
         ]
@@ -281,6 +282,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
         # extract only number (colNam)
 
         regex_list_digits = [
+            r'(?:\d+/\d+)',
             r'(?:\d+\-\d+\-\d+)', # of structure 00-00-00
             r'(?:\d+\-\d+)', # of structure 00-00
             r'(?:\d+\.\d+)', # 00.00
@@ -349,6 +351,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
         # extract only number (colNam)
 
         regex_list_digits = [
+            r'(?:\d+/\d+)',
             r'(?:\d+\-\d+\-\d+)', # of structure 00-00-00
             r'(?:\d+\-\d+)', # of structure 00-00
             r'(?:\d+\.\d+)', # 00.00
@@ -380,23 +383,36 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
         # keep the original colnum column
         # print(occs.colnum_full)
    
+
         occs['prefix'] = occs.colnum_full.str.extract('^([a-zA-Z]*)')
         ##this code deletes spaces at start or end
         occs['prefix'] = occs['prefix'].str.strip()
         # print(occs.prefix)
-    
+        
+
         # going from most specific to most general regex, this list takes all together in the end
-        regex_list_sufix = [
-          r'(?:[a-zA-Z ]*)$', ## any charcter at the end
-          r'(?:SR_\d{1,})', ## extract 'SR_' followed by 1 to 3 digits
-          r'(?:R_\d{1,})', ## extract 'R_' followed by 1 to 3 digits
-        ]
-
-        occs['sufix'] = occs['colnum_full'].astype(str).str.extract('(' + '|'.join(regex_list_sufix) + ')')
+        sufix = occs['colnum_full'].astype(str).str.extract(r'(?:[a-zA-Z ]*\d+)([a-zA-Z]\d+)$')
+        # print('1\n', occs.sufix)
+        sufix = sufix.fillna(occs['colnum_full'].astype(str).str.extract(r'(?:[a-zA-Z ]*\d+)([a-zA-Z]+)$'))
+        occs = occs.assign(sufix = sufix)
         occs['sufix'] = occs['sufix'].str.strip()
+        
+        # print('2\n', occs.sufix)    
+        
+        # regex_list_sufix = [
+        #   r'[a-zA-Z]+\d*(?:[a-zA-Z]\d+)$',
+        #   #r'?:[a-zA-Z ]*\d*([a-zA-Z]\d+)$'
+        #   r'(?:[a-zA-Z ]*)$', ## any charcter at the end
+        #   r'(?:SR_\d{1,})', ## extract 'SR_' followed by 1 to 3 digits
+        #   r'(?:R_\d{1,})', ## extract 'R_' followed by 1 to 3 digits
+        # ]
 
+        # occs['sufix'] = occs['colnum_full'].astype(str).str.extract('(' + '|'.join(regex_list_sufix) + ')')
+        occs['sufix'] = occs['sufix'].str.strip()
+        print(occs[['sufix', 'colnum_full']])
         # extract only digits without associated stuff, but including some characters (colNam)
         regex_list_digits = [
+            r'(?:\d+/\d+)',
             r'(?:\d+\-\d+\-\d+)', # of structure 00-00-00
             r'(?:\d+\-\d+)', # of structure 00-00
             r'(?:\d+\s\d+\s\d+)', # 00 00 00 or so
@@ -567,6 +583,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
         # extract only number (colNam)
 
         regex_list_digits = [
+            r'(?:\d+/\d+)',
             r'(?:\d+\-\d+\-\d+)', # of structure 00-00-00
             r'(?:\d+\-\d+)', # of structure 00-00
             r'(?:\d+\.\d+)', # 00.00

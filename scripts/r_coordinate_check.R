@@ -91,7 +91,7 @@ get_closest_coast = function(x, y){
  #                 encoding = 'UTF-8')
  # 
 
-dat <- read.csv('~/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/PPP_data_cleaned.csv', sep =';', head = T)
+# dat <- read.csv('~/Sync/1_Annonaceae/G_AfrAs_GDB/2_final_data/PPP_data_cleaned.csv', sep =';', head = T)
 
 #                  encoding = 'UTF-8', quote = '"')
 
