@@ -239,7 +239,7 @@ if __name__ == "__main__":
     #> Some housekeeping
     # the columns we clean (reduce repeating information from deduplication steps)
     cols_to_clean=['source_id', 'colnum_full', 'institute', 'herbarium_code', 'orig_bc', 
-                   'geo_issues', 'det_by', 'link', 'orig_recby', 'modified', 'orig_recby']
+                   'geo_issues', 'det_by', 'link', 'orig_recby', 'modified', 'orig_recby', 'barcode']
        
 
 
@@ -275,11 +275,11 @@ if __name__ == "__main__":
         deduplid = deduplid[(deduplid.recorded_by != args.na_value) & (deduplid.colnum != args.na_value)]
 
         # print(deduplid.shape)
-
+        logging.info(f'barcodes with NA? {len(exp_occs_final[exp_occs_final.barcode == args.na_value])}')
         logging.info('SMALLXP handling completed')
         # final data is written below after else:
 
-  
+        
     ###########################################################################################################
     ###------------------------------ NORMAL DATASET INTEGRATION -------------------------------------------###
     ###########################################################################################################

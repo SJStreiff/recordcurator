@@ -127,6 +127,8 @@ if __name__ == "__main__":
             exp_occs_4 = exp_occs_3
         #done
         try:
+            print(exp_occs_4.columns)
+            print(exp_occs_4)
             exp_occs_4 = exp_occs_4.astype(small_exp.expert_types)
         except:
             exp_occs_4 = exp_occs_4.astype(small_exp.expert_min_types)
@@ -163,7 +165,7 @@ if __name__ == "__main__":
             # and if yes, the user can reinsert checked non-conforming names into the workflow
         tmp_occs_3, frame_to_check = A3.collector_names(tmp_occs_2, args.working_directory, args.prefix, verbose=False, debugging=False)
         # should we reinsert the names we could not deal with?
-
+        print(tmp_occs_3[['colnum', 'colnum_full', 'prefix', 'sufix']])
         print('\n ................................\n',
         'Would you like to reinsert the collector names I couldn\'t handle?',
         'Please take care of encoding (usually best is UTF-8) when opening (especially in Microsoft Excel!!)',

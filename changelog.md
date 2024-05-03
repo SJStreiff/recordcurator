@@ -76,8 +76,8 @@
 # 2024-02-01:
     - cleaned functions/scripts order and names
 
-# 2024-02-23:
-    - 
+# 2024-05-03:
+    - weird artefact in coordinate overwriting when EXP flag with coordinates used. 
 
 
 # WISHLIST:

@@ -12,7 +12,7 @@ CHANGELOG:
 
 CONTAINS:
     powo_query():
-        despite the misleading function name, this function queries both POWO 
+        despite the misleading function name, this function queries both POWO and IPNI
 
     kew_query():
         queries IPNI for the ipni number, and POWO for status of a name, including potential synonymy and updated nomenclature.
@@ -210,8 +210,5 @@ def kew_query(occs, working_directory, verbose=True, debugging=False):
 # debug_occs = debug_occs.drop(['status', 'accepted_name', 'species_author', 'ipni_no'], axis = 1)
 # tmp1 = kew_query(debug_occs, 'Users/serafin/Sync/1_Annonaceae/share_DB_WIP/', verbose = True)
 # print('TMP!:', tmp1)
-
-# df=pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/4_post-processing/9_tmp_data/20231018_tmp-2.csv', sep = ';')
-# df_checked = kew_query(df, 'Users/serafin/Sync/1_Annonaceae/G_AM_GLOBAL_Distr/4_post-processing/', verbose = True)
 
 # #

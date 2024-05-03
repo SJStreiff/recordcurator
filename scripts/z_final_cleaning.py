@@ -14,7 +14,7 @@ import pandas as pd
 import numpy as np
 # import codecs
 # import os
-# import regex as re
+import regex as re
 # import requests
 # import swifter
 # import logging
@@ -31,8 +31,9 @@ import z_dependencies
 
 #         # find all barcodes with "[A-Z]0"
 ################
-
-occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GDB_2/X_GLOBAL/master_db.csv', sep = ';')
+# occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/GLOBAL_final/2_temp_int_data/PaleoTropics_all_CHECKED.csv', sep = ';')
+occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/GLOBAL_final/2_temp_int_data/NeoTropics_all_CHECKED_bc_NEW_check.csv', sep = ';')
+# occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GDB_2/X_GLOBAL/master_db.csv', sep = ';')
 # occs = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coordinate_discrepancy.csv', sep = ';')
 print(occs)
 
@@ -75,45 +76,109 @@ herb_indiv = herb_indiv.str.strip(', ')
 inst_indiv = inst_indiv.apply(lambda row: ', '.join(map(str, row)), axis=1)
 inst_indiv = inst_indiv.str.strip()
 inst_indiv = inst_indiv.str.strip(', ')
-print(inst_indiv)
-# then merge back together and attach to the barcodes df
-barcodes_indiv['herb'] = herb_indiv
-barcodes_indiv['herbarium_code']  = occs['herbarium_code']
-barcodes_indiv['inst'] = inst_indiv
-barcodes_indiv['institude']  = occs['institute']
+
+
+# Custom function to check conditions and replace values
+def check_and_replace(value, row):
+    if isinstance(value, str):
+        digits_match = re.search(r'^\d+$', value)
+        if digits_match:
+            digits = digits_match.group()
+            for other_column in row.index:
+                if isinstance(row[other_column], str):
+                    other_digits_match = re.search(r'^\d+$', row[other_column])
+                    if other_digits_match and other_digits_match.group() == digits:
+                        if row[other_column].endswith(digits):
+                            return None
+    return value
+
+
+# Apply the custom function to each row
+barcodes_indiv = barcodes_indiv.apply(lambda row: row.apply(lambda x: check_and_replace(x, row)), axis=1)
+
 
 print(barcodes_indiv)
-barcodes_indiv.dropna(axis=1, inplace=True)
 
-barcodes_indiv.to_csv('/Users/serafin/Desktop/tmpAm.csv', sep = ';')
+barcodes_better = barcodes_indiv.replace({'NaN': ''}, regex=False)
+barcodes_better = barcodes_better.replace({'None': ''}, regex=False)
 
-stop
-# barcodes_new = pd.read_csv('/Users/serafin/Desktop/TMP2moddedAfrAs.csv', sep = ';', index_col=0)
-# # barcodes_new = pd.read_csv('/Users/serafin/Desktop/TMP2modded.csv', sep = ';', index_col=0)
-# # sort back to index as in occs
+# replace BC0 with no_Barcode
+barcodes_better = barcodes_better.replace({'^[A-Z]+0$': 'no_Barcode'}, regex=True)
+barcodes_better = barcodes_better.apply(lambda row: ', '.join(str(value) for value in row if value is not None), axis=1)
+barcodes_better = barcodes_better.str.strip()
+barcodes_better = barcodes_better.str.strip(', ')
+
+print(barcodes_better)
+barcodes_indiv_2 = barcodes_better.str.split(', ', expand = True)
+barcodes_indiv_2 = barcodes_indiv_2.replace({'': None}, regex=False)
+def has_only_digits(row):
+    return any(str(value)[0].isdigit() for value in row if value is not None)
+# Add a new column with the flag
+barcodes_better = barcodes_better.replace({' ': 'no_barcode'}, regex=False)
+
+# barcodes_indiv_2.fillna('None', inplace=True)
+barcodes_indiv_2['HasOnlyDigits'] = barcodes_indiv_2.apply(has_only_digits, axis=1)
+
+
+# then merge back together and attach to the barcodes df
+barcodes_indiv_2['herb'] = herb_indiv
+barcodes_indiv_2['herbarium_code']  = occs['herbarium_code']
+barcodes_indiv_2['inst'] = inst_indiv
+barcodes_indiv_2['institude']  = occs['institute']
+print(barcodes_indiv_2['HasOnlyDigits'])
+print(barcodes_indiv_2[barcodes_indiv_2.HasOnlyDigits == True])
+# barcodes_indiv_2.dropna(axis=1, inplace=True)
+
+bc2 = barcodes_indiv_2[barcodes_indiv_2.HasOnlyDigits == True]
+
+
+bc2.to_csv('/Users/serafin/Desktop/NT_20240325.csv', sep = ';')
+
+
+# barcodes_new = pd.read_csv('/Users/serafin/Desktop/paleotrop_tmp-done.csv', sep = ';', index_col=0)
+barcodes_new = pd.read_csv('/Users/serafin/Desktop/NT_20240325_done.csv', sep = ';', index_col=0)
+# sort back to index as in occs
 # barcodes_new.sort_index(inplace=True)
+# barcodes_better = barcodes_better.apply(lambda row: ', '.join(str(value) for value in row if value is not None), axis=1)
+
 # barcodes_new=barcodes_new.fillna('')
-# print(barcodes_new)
-# # drop duplicarted columns before merging barcode columns
-# barcodes_new.drop(['herb', 'herbarium_code', 'inst', 'institude'], axis = 1, inplace=True)
+print('HERE:',barcodes_new)
+print(barcodes_new.columns)
+# drop duplicarted columns before merging barcode columns
+barcodes_new.drop(['herb', 'herbarium_code', 'inst', 'institude', 'HasOnlyDigits'], axis = 1, inplace=True)
+
+barcodes_new.replace({np.nan: None}, inplace=True)
+print('HERE2:',barcodes_new)
+barcodes_new = barcodes_new.apply(lambda row: ', '.join(str(value) for value in row if value is not None), axis=1)
+print('HERE3:',barcodes_new)
+barcodes_new = barcodes_new.str.strip()
+barcodes_new = barcodes_new.str.strip(', ')
 # barcodes_new = barcodes_new.replace({'NaN': ''}, regex=False)
-# # replace BC0 with no_Barcode
+# occs = pd.concat([occs, barcodes_new])
+occs['barcodes_tmp1'] = barcodes_new
+print(occs.columns)
+print(occs[occs.barcodes_tmp1.notna()])
+
+occs['barcodes_tmp1'] = occs['barcodes_tmp1'].fillna(occs.barcode) 
+print(occs[occs.barcodes_tmp1.notna()])
+
+# replace BC0 with no_Barcode
 # barcodes_new = barcodes_new.replace({'^[A-Z]+0$': 'no_Barcode'}, regex=True)
 
 
 # barcodes_new = barcodes_new.apply(lambda row: ', '.join(map(str, row)), axis=1)
 
-# barcodes_new = barcodes_new.str.strip()
-# barcodes_new = barcodes_new.str.strip(', ')
+print(barcodes_new)#[barcodes_new.columns.isin(occs.columns)])
 
-# print(barcodes_new)#[barcodes_new.columns.isin(occs.columns)])
+occs['barcode_tmp'] = occs['barcode']
+occs['barcode'] = occs['barcodes_tmp1']   
+print(occs.barcode)
+print(occs)
 
-# occs['barcode_tmp'] = occs['barcode']
-# occs['barcode'] = barcodes_new   
-# print(occs.barcode)
-# print(occs)
 
-# # occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GLOBAL_Distr/1_inter_steps/0_coord_discr_cleaned_NEW.csv', sep = ';', index=False)
+occs.to_csv('/Users/serafin/Sync/1_Annonaceae/GLOBAL_final/2_temp_int_data/NeoTropics_all_CHECKED_bc_NEW_check_done.csv', sep = ';', index=False)
+
+# occs.to_csv('/Users/serafin/Sync/1_Annonaceae/GLOBAL_final/2_temp_int_data/PaleoTropics_all_CHECKED_bc.csv', sep = ';', index=False)
 # occs.to_csv('/Users/serafin/Sync/1_Annonaceae/G_AfrAs_GDB/1_inter_steps/0_coord_discr_cleaned_NEW.csv', sep = ';', index=False)
 # # ################
 # #     # # then crossfill 
@@ -253,11 +318,11 @@ def more_cleaning(master):
     return master_out
 
 
-mast = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GDB_2/X_GLOBAL/backup/2024-01-26-5_master_db.csv', sep = ';')
-indet = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GDB_2/X_GLOBAL/indet_backlog.csv', sep = ';')
-occs = pd.concat([mast, indet])
+# mast = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GDB_2/X_GLOBAL/backup/2024-01-26-5_master_db.csv', sep = ';')
+# indet = pd.read_csv('/Users/serafin/Sync/1_Annonaceae/G_Am_GDB_2/X_GLOBAL/indet_backlog.csv', sep = ';')
+# occs = pd.concat([mast, indet])
 
-print(mast[mast.barcode=='-9999'])
+# print(mast[mast.barcode=='-9999'])
 
 # print(occs[['recorded_by', 'prefix', 'colnum', 'sufix']])
 

@@ -333,6 +333,7 @@ def deduplicate_small_experts(master, exp_dat):
             master.loc[master[col] == 0, col] = pd.NA
             master.loc[master[col] == -9999, col] = pd.NA
 
+    print('1st test:', len(master[master.barcode.isna()]))
 
     # if the master has duplicates, clean up 
     if sum(master.duplicated(subset =  ['recorded_by', 'prefix', 'colnum', 'sufix'], keep=False)) > 0:
@@ -415,7 +416,7 @@ def deduplicate_small_experts(master, exp_dat):
     else:
         print('MASTER clean\n MASTER:', len(master))
     #> Data ready
-
+    print('2nd test:', len(master[master.barcode.isna()]))
     # EXPERT
     # this combines all duplicated barcodes within a cell
     exp_dat.barcode = exp_dat.barcode.apply(lambda x: ', '.join(set(filter(lambda s: s.lower() != '<na>', str(x).split(', ')))) if pd.notna(x) else pd.NA) 
@@ -440,6 +441,7 @@ def deduplicate_small_experts(master, exp_dat):
     
     tmp_master = pd.concat([exploded_new_occs, exploded_master_db], axis=0)
 
+    print('3rd test:', len(tmp_master[tmp_master.barcode.isna()]))
     tmp_master = tmp_master.astype(z_dependencies.final_col_type)
     sorted_tmaster = tmp_master.sort_values(['origin', 'det_year', 'recorded_by', 'colnum', 'det_year'], ascending=[True, True, True, False, False])
 
@@ -551,6 +553,8 @@ def deduplicate_small_experts(master, exp_dat):
 # # # go through and deduplicate by full barcodes:
 
     master_bc_agg.barcode = master_bc_agg.barcode.apply(lambda x: ', '.join(set(x.split(', '))))    # this combines all duplicated barcodes within a cell
+    print('4th test:', len(master_bc_agg[master_bc_agg.barcode.isna()]))
+
 
     # print(master_bc_agg.barcode, 'Issues?')
 
@@ -610,6 +614,9 @@ def deduplicate_small_experts(master, exp_dat):
             )
 
     barcodes_done = barcodes_done.sort_values(['recorded_by', 'colnum'], ascending = [True, True])
+    print('5th test:', len(barcodes_done[barcodes_done.barcode.isna()]))
+
+
     # split into deduplicateable data not for next step
     master_sn  = barcodes_done[barcodes_done[['recorded_by', 'colnum']].isna().any(axis=1)]
     # here exp and master already merged
@@ -671,7 +678,7 @@ def deduplicate_small_experts(master, exp_dat):
 
     # sort values most important is EXP (= origin here)
     dups_sorted = dups.sort_values(['origin', 'recorded_by', 'colnum', 'origin', 'det_year'], ascending=[True, True, True, True, False])
-    #print('HERE\n',dups_sorted[['recorded_by', 'colnum', 'det_by', 'accepted_name', 'origin']])
+    print('HERE\n',dups_sorted[['recorded_by', 'colnum', 'det_by', 'accepted_name', 'origin']])
 
     
     if exp_dat.accepted_name.notna().all():
@@ -699,10 +706,10 @@ def deduplicate_small_experts(master, exp_dat):
                 barcode = pd.NamedAgg(column='barcode',  aggfunc='last'),
                 new_bc_to_add =pd.NamedAgg(column='barcode', aggfunc='first') 
             )
-            # print('the insert df',dup_additions[['accepted_name', 'barcode', 'det_by']])
+            print('the insert df',dup_additions[['accepted_name', 'barcode', 'det_by']])
 
 
-           # print(dup_additions[dup_additions.det_by == 'Maas, PJM'])
+            print(dup_additions[dup_additions.det_by == 'Hoekstra, PH'])
 
             # subset original (complete data) 
 
@@ -717,6 +724,14 @@ def deduplicate_small_experts(master, exp_dat):
 
 
             dups_full = pd.merge(dups_master, dup_additions, on='barcode', how='outer', suffixes=('', '_exp'))
+            # print('Moment of truth?')
+            # print(dups_full[['ddlat', 'ddlat_exp']])
+
+            issues = dups_full[dups_full['ddlong'] - dups_full['ddlong_exp'] >=0.5]
+            print(issues[['ddlong', 'ddlong_exp']])
+            issues2 = dups_full[dups_full['ddlong'] - dups_full['ddlong_exp'] <=-0.5]
+            print(issues2[['ddlong', 'ddlong_exp']])
+
 
             dups_full['source_id'] = dups_full.source_id + ', specialist'
             dups_full['barcode'] = dups_full.barcode + ', ' + dups_full.new_bc_to_add
@@ -728,9 +743,17 @@ def deduplicate_small_experts(master, exp_dat):
             dups_full['ipni_no'] = dups_full['ipni_no_exp'].combine_first(dups_full['ipni_no'])
             dups_full['status'] = dups_full['status_exp'].combine_first(dups_full['status'])
 
-
-
+            dups_full['ddlat'] = dups_full['ddlat_exp'].combine_first(dups_full['ddlat'])
+            dups_full['ddlong'] = dups_full['ddlong_exp'].combine_first(dups_full['ddlong'])
             
+            #-- for debuggug coordinate differences
+            # print('Coordinate discrepancies??')
+            # issues = dups_full[dups_full['ddlat'] - dups_full['ddlat_exp'] >=0.5]
+            # print(issues[['ddlat', 'ddlat_exp']])
+            # issues2 = dups_full[dups_full['ddlat'] - dups_full['ddlat_exp'] <=-0.5]
+            # print(issues2[['ddlat', 'ddlat_exp']])
+
+
 
         else:
             print('Not complete coordinates in dets')
@@ -791,8 +814,9 @@ def deduplicate_small_experts(master, exp_dat):
             #print(dups_full[['recorded_by', 'colnum', 'origin', 'det_year']])
 
             dups_full = dups_full.sort_values(['recorded_by', 'colnum', 'origin', 'det_year'], ascending=[True, True, True, False])
+# 
 
-        print(dups_full.barcode)
+        # print(dups_full.barcode)
         # print(dups_full[['recorded_by', 'accepted_name', 'accepted_name_exp', 'expert_det']])
 
 
@@ -800,7 +824,7 @@ def deduplicate_small_experts(master, exp_dat):
 
         master_out = pd.concat([singl_dedup, master_sn], axis=0)
 
-        print(master_out.barcode)
+        # print(master_out.barcode)
         master_out.loc[master_out['det_year'] == -9999, 'det_year'] = pd.NA
 
         # print(master_out.loc[master_out.expert_det == 'EXP', 'accepted_name'].isna().sum())

@@ -1,0 +1,4 @@
+nice to have: make a regex for the collector names based on geography
+
+i.e. check if most records are southamerican and then have 
+regex specifically with double surnames etc, or somehting like that

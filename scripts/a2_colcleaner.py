@@ -348,7 +348,7 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
         occs['sufix'] = occs['colnum_full'].astype(str).str.extract('(' + '|'.join(regex_list_sufix) + ')')
         occs['sufix'] = occs['sufix'].str.strip()
 
-        # extract only number (colNam)
+        # extract only number (colnum)
 
         regex_list_digits = [
             r'(?:\d+/\d+)',
@@ -364,10 +364,8 @@ def column_cleaning(occs, data_source_type, working_directory, prefix, verbose=T
 
         occs['colnum'].replace('nan', pd.NA, inplace=True)
 
-
-        # make colnum_full
         occs['region'] = occs['upper-region'] + occs['lower-region']
-        occs['colnum_full'] = occs.colnum
+        # occs['colnum_full'] = occs.colnum
         # for completeness we need this
         occs['orig_bc'] = occs['barcode']
         occs['country_id'] = pd.NA
