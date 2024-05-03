@@ -77,8 +77,7 @@
     - cleaned functions/scripts order and names
 
 # 2024-05-03:
-    - weird artefact in coordinate overwriting when EXP flag with coordinates used. 
-
+    - weird artefact in coordinate overwriting when EXP flag with coordinates used. RESOLVED, now expert coordinates cleanly written into master
 
 # WISHLIST:
     - clean up scripts so 1 main function per file = better overview
