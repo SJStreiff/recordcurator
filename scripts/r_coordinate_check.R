@@ -299,7 +299,7 @@ geo_issues[geo_issues$specific_epithet == '', "expert_det"] <- ''
 
 
 print('writing file now')
-write.table(geo_issues, file = out_file, row.names = FALSE, sep=';')
+write.table(geo_issues, file = out_file, row.names = FALSE, sep=';', qmethod = 'd')
 
 print(paste('Annotated coordinates are written to', out_file))
 print('#> C: Coordinate checking - complete')

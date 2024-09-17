@@ -53,6 +53,7 @@ def column_standardiser(importfile, data_source_type, verbose=True, debugging = 
         # for all data in the darwin core format!!
         logging.info('data type GBIF')
         occs = pd.read_csv(imp, sep = '\t',  dtype = str, na_values=pd.NA, quotechar='"') # read data
+
         occs = occs[occs['basisOfRecord'] == "PRESERVED_SPECIMEN"] # remove potential iNaturalist data....
         occs = occs[occs['occurrenceStatus'] == 'PRESENT'] # loose absence data from surveys
         try:
@@ -80,6 +81,17 @@ def column_standardiser(importfile, data_source_type, verbose=True, debugging = 
         # print('READ3',occs.columns)
         #occs = occs.fillna(pd.NA) # problems with this NA
         occs['source_id'] = 'brahms'
+
+    elif(data_source_type == 'BRAHMS_NEW'):
+        # for data from BRAHMS extracts
+        logging.info('data type BRAHMS_NEW')
+        occs = pd.read_csv(imp, sep = ';',  dtype = str, na_values=pd.NA, quotechar='"') # read data
+        occs = occs.rename(columns = z_dependencies.newbrahms_key) # rename
+        occs = occs[z_dependencies.newbrahms_cols] # and subset
+        # print('READ3',occs.columns)
+        #occs = occs.fillna(pd.NA) # problems with this NA
+        occs['source_id'] = 'brahms'
+
 
     elif(data_source_type == 'MO_tropicos'):
         # for data from BRAHMS extracts
